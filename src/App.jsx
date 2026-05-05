@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import HomeScreen from './components/HomeScreen'
 import ResultsScreen from './components/ResultsScreen'
 import BasketScreen from './components/BasketScreen'
@@ -25,17 +25,37 @@ function guardarEnHistorial(canasta, nombre) {
     fecha: new Date().toISOString(),
     items: canasta,
   }
-  // Reemplazar si ya existe una con el mismo nombre, sino agregar al principio
   const idx = historial.findIndex(h => h.nombre === nueva.nombre)
   if (idx !== -1) {
     historial[idx] = nueva
   } else {
     historial.unshift(nueva)
   }
-  // Mantener solo las últimas MAX_HISTORIAL
   const recortado = historial.slice(0, MAX_HISTORIAL)
   localStorage.setItem(STORAGE_KEY, JSON.stringify(recortado))
   return recortado
+}
+
+// ── Hash sharing helpers ──────────────────────────────────────────────────────
+
+/**
+ * Intenta leer una canasta desde el hash de la URL.
+ * Formato: #canasta=<base64(JSON)>
+ * Retorna el array de items o null si no hay nada válido.
+ */
+function leerCanastaDesdHash() {
+  try {
+    const hash = window.location.hash // e.g. "#canasta=eyJpdGVtcy..."
+    if (!hash.startsWith('#canasta=')) return null
+    const encoded = hash.slice('#canasta='.length)
+    if (!encoded) return null
+    const json = atob(decodeURIComponent(encoded))
+    const items = JSON.parse(json)
+    if (!Array.isArray(items) || items.length === 0) return null
+    return items
+  } catch {
+    return null
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -51,6 +71,16 @@ export default function App() {
   const [error, setError] = useState(null)
 
   const API = import.meta.env.VITE_API_URL || 'https://sepa-comparador-production.up.railway.app'
+
+  // ── Leer canasta compartida desde hash al montar ──────────────────────────
+  useEffect(() => {
+    const itemsDesdeHash = leerCanastaDesdHash()
+    if (itemsDesdeHash) {
+      setCanasta(itemsDesdeHash)
+      // Limpiar el hash de la URL sin recargar ni agregar entrada al historial
+      history.replaceState(null, '', window.location.pathname + window.location.search)
+    }
+  }, [])
 
   const fetchDefaultCanasta = useCallback(async () => {
     if (canasta) return canasta
