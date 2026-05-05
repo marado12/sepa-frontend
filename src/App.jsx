@@ -120,12 +120,11 @@ export default function App() {
   }, [API, radioKm, canasta, diaSeleccionado])
 
   // Al guardar desde BasketScreen: actualiza estado + persiste en historial
-  const handleSaveCanasta = useCallback((items, nombre, dia) => {
+  const handleSaveCanasta = useCallback((items, nombre) => {
     setCanasta(items)
-    if (dia !== undefined && dia !== null) setDiaSeleccionado(dia)
     guardarEnHistorial(items, nombre)
     setScreen('home')
-  }, [setCanasta, setDiaSeleccionado])
+  }, [setCanasta])
 
   if (screen === 'basket') {
     return (
@@ -171,7 +170,8 @@ export default function App() {
       onCompare={handleCompare}
       onEditBasket={() => { fetchDefaultCanasta(); setScreen('basket') }}
       error={error}
+      diaSeleccionado={diaSeleccionado}
+      onDiaChange={setDiaSeleccionado}
     />
   )
 }
-
