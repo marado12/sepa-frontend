@@ -183,6 +183,31 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  const [editingIdx, setEditingIdx] = useState(null)
+  const [editItem, setEditItem] = useState(null)
+
+  const startEdit = (item) => {
+    setEditingIdx(item._idx)
+    setEditItem({ ...item })
+  }
+
+  const cancelEdit = () => {
+    setEditingIdx(null)
+    setEditItem(null)
+  }
+
+  const saveEdit = () => {
+    if (!editItem.nombre.trim()) return
+    setItems(prev => prev.map((item, idx) =>
+      idx === editingIdx ? {
+        ...editItem,
+        palabras_clave: [editItem.nombre.toLowerCase()],
+      } : item
+    ))
+    setEditingIdx(null)
+    setEditItem(null)
+  }
+
   const updateQty = (i, delta) => {
     setItems(prev => prev.map((item, idx) =>
       idx === i ? { ...item, cantidad: Math.max(0.5, +(item.cantidad + delta).toFixed(1)) } : item
@@ -345,21 +370,61 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
             <div className="basket-cat-header">{cat}</div>
             {catItems.map(item => (
               <div key={item._idx} className="basket-item">
-                <div className="basket-item-info">
-                  <span className="basket-item-name">{item.nombre}</span>
-                  {item.marcas_aceptadas?.length > 0 && (
-                    <span className="basket-item-marcas">
-                      {item.marcas_aceptadas.join(' · ')}
-                    </span>
-                  )}
-                  <span className="basket-item-unit">{item.unidad}</span>
-                </div>
-                <div className="basket-item-controls">
-                  <button className="qty-btn" onClick={() => updateQty(item._idx, -1)}>−</button>
-                  <span className="qty-value">{item.cantidad}</span>
-                  <button className="qty-btn" onClick={() => updateQty(item._idx, 1)}>+</button>
-                  <button className="remove-btn" onClick={() => removeItem(item._idx)}>✕</button>
-                </div>
+                {editingIdx === item._idx ? (
+                  <div className="basket-item-edit">
+                    <input
+                      className="add-input"
+                      value={editItem.nombre}
+                      onChange={e => setEditItem(p => ({ ...p, nombre: e.target.value }))}
+                      placeholder="Nombre del producto"
+                      autoFocus
+                    />
+                    <div className="add-row">
+                      <input
+                        type="number"
+                        className="add-input add-input-sm"
+                        min={0.5}
+                        step={0.5}
+                        value={editItem.cantidad}
+                        onChange={e => setEditItem(p => ({ ...p, cantidad: +e.target.value }))}
+                      />
+                      <select
+                        className="add-input add-input-sm"
+                        value={editItem.unidad}
+                        onChange={e => setEditItem(p => ({ ...p, unidad: e.target.value }))}
+                      >
+                        {UNIDADES.map(u => <option key={u}>{u}</option>)}
+                      </select>
+                    </div>
+                    <MarcasInput
+                      value={editItem.marcas_aceptadas || []}
+                      onChange={val => setEditItem(p => ({ ...p, marcas_aceptadas: val }))}
+                    />
+                    <div className="add-actions">
+                      <button className="btn-primary" onClick={saveEdit}>Guardar</button>
+                      <button className="btn-secondary" onClick={cancelEdit}>Cancelar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="basket-item-info">
+                      <span className="basket-item-name">{item.nombre}</span>
+                      {item.marcas_aceptadas?.length > 0 && (
+                        <span className="basket-item-marcas">
+                          {item.marcas_aceptadas.join(' · ')}
+                        </span>
+                      )}
+                      <span className="basket-item-unit">{item.unidad}</span>
+                    </div>
+                    <div className="basket-item-controls">
+                      <button className="qty-btn" onClick={() => updateQty(item._idx, -1)}>−</button>
+                      <span className="qty-value">{item.cantidad}</span>
+                      <button className="qty-btn" onClick={() => updateQty(item._idx, 1)}>+</button>
+                      <button className="qty-btn" onClick={() => startEdit(item)} title="Editar producto">✎</button>
+                      <button className="remove-btn" onClick={() => removeItem(item._idx)}>✕</button>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>
