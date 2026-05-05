@@ -161,19 +161,13 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
     if (suggestions.length > 0) setShowSuggestions(true)
   }, [suggestions])
 
-  const sanearItem = (item) => ({
-    ...item,
-    nombre: typeof item.nombre === 'string' ? item.nombre : (item.nombre?.nombre ?? ''),
-    unidad: typeof item.unidad === 'string' ? item.unidad : 'unidad',
-  })
-
   useEffect(() => {
     if (canasta) {
-      setItems(canasta.map(sanearItem))
+      setItems([...canasta])
     } else {
       setLoading(true)
       fetchDefaultCanasta().then(c => {
-        setItems(c ? c.map(sanearItem) : [])
+        setItems(c ? [...c] : [])
         setLoading(false)
       })
     }
@@ -198,9 +192,7 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
   const removeItem = (i) => setItems(prev => prev.filter((_, idx) => idx !== i))
   const clearAll = () => setItems([])
 
-  const selectSuggestion = (raw) => {
-    // Blindaje: garantiza que nombre siempre sea string aunque llegue {nombre, variantes}
-    const nombre = typeof raw === 'string' ? raw : (raw?.nombre ?? '')
+  const selectSuggestion = (nombre) => {
     const unidadDetectada = detectarUnidad(nombre)
     setNewItem(p => ({
       ...p,
