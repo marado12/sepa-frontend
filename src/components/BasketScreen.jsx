@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 
 // Nota: el selector de día fue movido a HomeScreen
 
-const CATEGORIAS = ['Lácteos','Panadería','Secos','Aceites','Infusiones','Carnes','Limpieza','Higiene','Conservas','Bebidas','Otro']
 const UNIDADES = ['unidad', 'kg', 'gramos', 'litro', 'ml', 'pack']
 
 const API = import.meta.env.VITE_API_URL || 'https://sepa-comparador-production.up.railway.app'
@@ -11,9 +10,18 @@ const ITEM_VACIO = {
   nombre: '',
   cantidad: 1,
   unidad: 'unidad',
-  categoria: 'Otro',
-  marca: '',
-  marcas_aceptadas: [],
+  categoria: 'Otro',   // el backend lo infiere; el usuario no lo ve
+  marcas_aceptadas: [], // vacío = cualquier marca; 1+ = elige la más barata entre ellas
+}
+
+// Detecta la unidad desde una descripción del SEPA ("Leche entera 1L" → "litro")
+function detectarUnidad(desc) {
+  const d = desc.toLowerCase()
+  if (/\d\s*(kg|kilo)/.test(d))          return 'kg'
+  if (/\d\s*(g|gr|gramos?)\b/.test(d))   return 'gramos'
+  if (/\d\s*(ml|cc)\b/.test(d))          return 'ml'
+  if (/\d\s*(l|lt|lts|litros?)\b/.test(d)) return 'litro'
+  return null
 }
 
 function useCacheStatus() {
@@ -34,7 +42,6 @@ function useCacheStatus() {
   }, [])
   return status
 }
-
 
 function useProductSearch(query) {
   const [suggestions, setSuggestions] = useState([])
@@ -66,19 +73,15 @@ function useProductSearch(query) {
   return { suggestions, searching }
 }
 
-function MarcasAceptadasInput({ value, onChange }) {
+function MarcasInput({ value, onChange }) {
   const inputRef = useRef(null)
 
   const addMarca = (raw) => {
     const val = raw.trim()
-    if (val && !value.includes(val)) {
-      onChange([...value, val])
-    }
+    if (val && !value.includes(val)) onChange([...value, val])
   }
 
-  const removeMarca = (i) => {
-    onChange(value.filter((_, j) => j !== i))
-  }
+  const removeMarca = (i) => onChange(value.filter((_, j) => j !== i))
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' || e.key === ',') {
@@ -92,10 +95,7 @@ function MarcasAceptadasInput({ value, onChange }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <div
-        className="chips-input"
-        onClick={() => inputRef.current?.focus()}
-      >
+      <div className="chips-input" onClick={() => inputRef.current?.focus()}>
         {value.map((m, i) => (
           <span key={i} className="chip">
             {m}
@@ -117,7 +117,7 @@ function MarcasAceptadasInput({ value, onChange }) {
       </div>
       {value.length > 0 && (
         <p className="hint-warning">
-          ⚠ Solo se buscarán precios de estas marcas. Si ninguna aparece en SEPA, el producto quedará sin precio.
+          Se elegirá la más barata entre estas marcas. Si ninguna aparece en SEPA, el producto quedará sin precio.
         </p>
       )}
     </div>
@@ -132,16 +132,14 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [showHistorial, setShowHistorial] = useState(false)
   const [nombreCanasta, setNombreCanasta] = useState('')
+  const [unidadBloqueada, setUnidadBloqueada] = useState(false)
   const suggestionsRef = useRef(null)
 
   const { suggestions, searching } = useProductSearch(newItem.nombre)
   const cacheStatus = useCacheStatus()
 
-  // Mostrar sugerencias automáticamente cuando llegan del servidor
   useEffect(() => {
-    if (suggestions.length > 0) {
-      setShowSuggestions(true)
-    }
+    if (suggestions.length > 0) setShowSuggestions(true)
   }, [suggestions])
 
   useEffect(() => {
@@ -172,16 +170,17 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
     ))
   }
 
-  const removeItem = (i) => {
-    setItems(prev => prev.filter((_, idx) => idx !== i))
-  }
-
-  const clearAll = () => {
-    setItems([])
-  }
+  const removeItem = (i) => setItems(prev => prev.filter((_, idx) => idx !== i))
+  const clearAll = () => setItems([])
 
   const selectSuggestion = (nombre) => {
-    setNewItem(p => ({ ...p, nombre }))
+    const unidadDetectada = detectarUnidad(nombre)
+    setNewItem(p => ({
+      ...p,
+      nombre,
+      ...(unidadDetectada ? { unidad: unidadDetectada } : {}),
+    }))
+    setUnidadBloqueada(!!unidadDetectada)
     setShowSuggestions(false)
   }
 
@@ -193,13 +192,12 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
       cantidad_texto: '',
     }])
     setNewItem(ITEM_VACIO)
+    setUnidadBloqueada(false)
     setShowAdd(false)
   }
 
   const resetDefault = () => {
-    fetchDefaultCanasta().then(c => {
-      if (c) setItems([...c])
-    })
+    fetchDefaultCanasta().then(c => { if (c) setItems([...c]) })
   }
 
   const cargarDesdeHistorial = (entry) => {
@@ -241,7 +239,6 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
         </div>
       </div>
 
-      {/* Banner estado del cache */}
       {!cacheStatus.listo && (
         <div className="cache-banner">
           {cacheStatus.en_progreso
@@ -255,10 +252,7 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
 
       {historial.length > 0 && (
         <div className="basket-historial-bar">
-          <button
-            className="btn-historial"
-            onClick={() => setShowHistorial(v => !v)}
-          >
+          <button className="btn-historial" onClick={() => setShowHistorial(v => !v)}>
             📋 Canastas guardadas ({historial.length})
           </button>
           {showHistorial && (
@@ -293,9 +287,6 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
                       {item.marcas_aceptadas.join(' · ')}
                     </span>
                   )}
-                  {!item.marcas_aceptadas?.length && item.marca && (
-                    <span className="basket-item-unit">{item.marca}</span>
-                  )}
                   <span className="basket-item-unit">{item.unidad}</span>
                 </div>
                 <div className="basket-item-controls">
@@ -320,6 +311,7 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
               autoComplete="off"
               onChange={e => {
                 setNewItem(p => ({ ...p, nombre: e.target.value }))
+                setUnidadBloqueada(false)
                 setShowSuggestions(true)
               }}
               onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
@@ -336,18 +328,11 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
             )}
           </div>
 
-          <input
-            className="add-input"
-            placeholder="Marca preferida (opcional, scoring suave)"
-            value={newItem.marca}
-            onChange={e => setNewItem(p => ({ ...p, marca: e.target.value }))}
-          />
-
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label className="add-label">
-              Marcas aceptadas <span className="hint">(filtra estrictamente — dejar vacío = cualquier marca)</span>
+              Marcas <span className="hint">(opcional — dejá vacío para la más barata de cualquier marca)</span>
             </label>
-            <MarcasAceptadasInput
+            <MarcasInput
               value={newItem.marcas_aceptadas}
               onChange={(val) => setNewItem(p => ({ ...p, marcas_aceptadas: val }))}
             />
@@ -364,23 +349,27 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
               onChange={e => setNewItem(p => ({ ...p, cantidad: +e.target.value }))}
             />
             <select
-              className="add-input add-input-sm"
+              className={`add-input add-input-sm${unidadBloqueada ? ' input-locked' : ''}`}
               value={newItem.unidad}
               onChange={e => setNewItem(p => ({ ...p, unidad: e.target.value }))}
+              disabled={unidadBloqueada}
+              title={unidadBloqueada ? 'Unidad detectada automáticamente desde SEPA' : ''}
             >
               {UNIDADES.map(u => <option key={u}>{u}</option>)}
             </select>
-            <select
-              className="add-input"
-              value={newItem.categoria}
-              onChange={e => setNewItem(p => ({ ...p, categoria: e.target.value }))}
-            >
-              {CATEGORIAS.map(c => <option key={c}>{c}</option>)}
-            </select>
+            {unidadBloqueada && (
+              <button
+                className="btn-unlock"
+                type="button"
+                title="Editar unidad manualmente"
+                onClick={() => setUnidadBloqueada(false)}
+              >✎</button>
+            )}
           </div>
+
           <div className="add-actions">
             <button className="btn-primary" onClick={addItem}>Agregar</button>
-            <button className="btn-secondary" onClick={() => { setShowAdd(false); setNewItem(ITEM_VACIO) }}>Cancelar</button>
+            <button className="btn-secondary" onClick={() => { setShowAdd(false); setNewItem(ITEM_VACIO); setUnidadBloqueada(false) }}>Cancelar</button>
           </div>
         </div>
       ) : (
@@ -403,68 +392,3 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
     </div>
   )
 }
-            value={newItem.marca}
-            onChange={e => setNewItem(p => ({ ...p, marca: e.target.value }))}
-          />
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label className="add-label">
-              Marcas aceptadas <span className="hint">(filtra estrictamente — dejar vacío = cualquier marca)</span>
-            </label>
-            <MarcasAceptadasInput
-              value={newItem.marcas_aceptadas}
-              onChange={(val) => setNewItem(p => ({ ...p, marcas_aceptadas: val }))}
-            />
-          </div>
-
-          <div className="add-row">
-            <input
-              type="number"
-              className="add-input add-input-sm"
-              placeholder="Cant."
-              min={0.5}
-              step={0.5}
-              value={newItem.cantidad}
-              onChange={e => setNewItem(p => ({ ...p, cantidad: +e.target.value }))}
-            />
-            <select
-              className="add-input add-input-sm"
-              value={newItem.unidad}
-              onChange={e => setNewItem(p => ({ ...p, unidad: e.target.value }))}
-            >
-              {UNIDADES.map(u => <option key={u}>{u}</option>)}
-            </select>
-            <select
-              className="add-input"
-              value={newItem.categoria}
-              onChange={e => setNewItem(p => ({ ...p, categoria: e.target.value }))}
-            >
-              {CATEGORIAS.map(c => <option key={c}>{c}</option>)}
-            </select>
-          </div>
-          <div className="add-actions">
-            <button className="btn-primary" onClick={addItem}>Agregar</button>
-            <button className="btn-secondary" onClick={() => { setShowAdd(false); setNewItem(ITEM_VACIO) }}>Cancelar</button>
-          </div>
-        </div>
-      ) : (
-        <button className="btn-add-item" onClick={() => setShowAdd(true)}>
-          + Agregar producto
-        </button>
-      )}
-
-      <div className="basket-footer">
-        <input
-          className="add-input basket-nombre-input"
-          placeholder="Nombre para guardar (ej: Casa, Trabajo…)"
-          value={nombreCanasta}
-          onChange={e => setNombreCanasta(e.target.value)}
-        />
-        <button className="btn-primary btn-save" onClick={handleSave}>
-          Guardar canasta
-        </button>
-      </div>
-    </div>
-  )
-}
-
