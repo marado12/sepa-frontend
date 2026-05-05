@@ -451,3 +451,4 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
     </div>
   )
 }
+
