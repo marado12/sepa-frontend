@@ -1,0 +1,61 @@
+/* ─── Precio normalizado ───────────────────────────────── */
+.precio-normalizado {
+  display: inline-block;
+  font-size: 0.72rem;
+  color: #6b7280;           /* gris neutro */
+  background: #f3f4f6;
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 4px;
+  cursor: default;
+  white-space: nowrap;
+}
+
+/* Variante dentro de tabla de resultados (texto más chico) */
+.resultado-tabla .precio-normalizado {
+  font-size: 0.68rem;
+}
+
+/* ─── Selector de cantidad de pack ────────────────────── */
+.cantidad-pack-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.cantidad-pack-label {
+  font-size: 0.78rem;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.cantidad-pack-options {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.cantidad-pack-btn {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1.5px solid #d1d5db;
+  background: white;
+  font-size: 0.78rem;
+  color: #374151;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.cantidad-pack-btn:hover {
+  border-color: #6366f1;
+  color: #6366f1;
+}
+
+.cantidad-pack-btn.active {
+  border-color: #6366f1;
+  background: #6366f1;
+  color: white;
+  font-weight: 600;
+}

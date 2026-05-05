@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import { CantidadPackSelector, PrecioNormalizado } from "./PrecioNormalizado";
+import "./precio-normalizado.css";
 
 const UNIDADES = ['unidad', 'kg', 'gramos', 'litro', 'ml', 'pack']
 
@@ -378,11 +380,18 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
             {searching && <span className="autocomplete-searching">🔍</span>}
             {showSuggestions && suggestions.length > 0 && (
               <ul className="autocomplete-list">
-                {suggestions.map((s, i) => (
-                  <li key={i} className="autocomplete-item" onMouseDown={() => selectSuggestion(s)}>
-                    {s}
-                  </li>
-                ))}
+                {suggestions.map((s, i) => {
+                  const nombre = typeof s === 'string' ? s : s.nombre
+                  const variantes = typeof s === 'object' && s.variantes > 1 ? s.variantes : null
+                  return (
+                    <li key={i} className="autocomplete-item" onMouseDown={() => selectSuggestion(nombre)}>
+                      <span className="autocomplete-nombre">{nombre}</span>
+                      {variantes && (
+                        <span className="autocomplete-variantes">{variantes} variantes</span>
+                      )}
+                    </li>
+                  )
+                })}
               </ul>
             )}
           </div>
@@ -451,4 +460,3 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
     </div>
   )
 }
-

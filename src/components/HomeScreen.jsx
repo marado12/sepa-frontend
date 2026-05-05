@@ -156,4 +156,3 @@ export default function HomeScreen({ radioKm, onRadioChange, onCompare, onEditBa
     </div>
   )
 }
-

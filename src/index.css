@@ -803,6 +803,12 @@ body {
   color: var(--text-secondary, #777);
 }
 
+.autocomplete-variantes {
+  font-size: 11px;
+  color: var(--verde, #1a7a4a);
+  font-weight: 500;
+}
+
 /* Historial de canastas */
 .basket-historial-bar {
   padding: 8px 16px;
