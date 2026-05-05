@@ -4,16 +4,53 @@ import ResultsScreen from './components/ResultsScreen'
 import BasketScreen from './components/BasketScreen'
 import './index.css'
 
+const STORAGE_KEY = 'sepa_canasta_historial'
+const MAX_HISTORIAL = 5
+
+// ── Helpers localStorage ──────────────────────────────────────────────────────
+
+function leerHistorial() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+
+function guardarEnHistorial(canasta, nombre) {
+  const historial = leerHistorial()
+  const nueva = {
+    id: Date.now(),
+    nombre: nombre || `Canasta ${new Date().toLocaleDateString('es-AR')}`,
+    fecha: new Date().toISOString(),
+    items: canasta,
+  }
+  // Reemplazar si ya existe una con el mismo nombre, sino agregar al principio
+  const idx = historial.findIndex(h => h.nombre === nueva.nombre)
+  if (idx !== -1) {
+    historial[idx] = nueva
+  } else {
+    historial.unshift(nueva)
+  }
+  // Mantener solo las últimas MAX_HISTORIAL
+  const recortado = historial.slice(0, MAX_HISTORIAL)
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(recortado))
+  return recortado
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function App() {
   const [screen, setScreen] = useState('home') // home | loading | results | basket
-  const [location, setLocation] = useState(null) // { lat, lon } | { provincia }
+  const [location, setLocation] = useState(null)
   const [radioKm, setRadioKm] = useState(5)
   const [canasta, setCanasta] = useState(null) // null = usar default del backend
+  const [diaSeleccionado, setDiaSeleccionado] = useState(null) // null = día actual
   const [results, setResults] = useState(null)
   const [loadingMsg, setLoadingMsg] = useState('')
   const [error, setError] = useState(null)
 
-  const API = import.meta.env.VITE_API_URL || 'https://TU-APP.up.railway.app'
+  const API = import.meta.env.VITE_API_URL || 'https://sepa-comparador-production.up.railway.app'
 
   const fetchDefaultCanasta = useCallback(async () => {
     if (canasta) return canasta
@@ -48,8 +85,9 @@ export default function App() {
     try {
       const body = {
         radio_km: radioKm,
-        canasta: [],
+        canasta: canasta || [],   // [] = el backend usa la canasta default
         promos: [],
+        ...(diaSeleccionado !== null && { dia: diaSeleccionado }),
       }
       if (loc.lat != null) {
         body.lat = loc.lat
@@ -79,14 +117,23 @@ export default function App() {
       setError(e.message)
       setScreen('home')
     }
-  }, [API, radioKm])
+  }, [API, radioKm, canasta, diaSeleccionado])
+
+  // Al guardar desde BasketScreen: actualiza estado + persiste en historial
+  const handleSaveCanasta = useCallback((items, nombre, dia) => {
+    setCanasta(items)
+    if (dia !== undefined && dia !== null) setDiaSeleccionado(dia)
+    guardarEnHistorial(items, nombre)
+    setScreen('home')
+  }, [setCanasta, setDiaSeleccionado])
 
   if (screen === 'basket') {
     return (
       <BasketScreen
         canasta={canasta}
+        historial={leerHistorial()}
         onBack={() => setScreen('home')}
-        onSave={(c) => { setCanasta(c); setScreen('home') }}
+        onSave={handleSaveCanasta}
         fetchDefaultCanasta={fetchDefaultCanasta}
       />
     )
@@ -127,3 +174,4 @@ export default function App() {
     />
   )
 }
+
