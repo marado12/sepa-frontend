@@ -58,7 +58,11 @@ function useProductSearch(query) {
       try {
         const res = await fetch(`${API}/api/buscar-productos?q=${encodeURIComponent(query)}&limite=8`)
         const data = await res.json()
-        setSuggestions(data.sugerencias || [])
+        setSuggestions(
+          (data.sugerencias || []).map(s =>
+            typeof s === 'string' ? { nombre: s, variantes: null } : s
+          )
+        )
       } catch {
         setSuggestions([])
       } finally {
@@ -380,18 +384,14 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
             {searching && <span className="autocomplete-searching">🔍</span>}
             {showSuggestions && suggestions.length > 0 && (
               <ul className="autocomplete-list">
-                {suggestions.map((s, i) => {
-                  const nombre = typeof s === 'string' ? s : s.nombre
-                  const variantes = typeof s === 'object' && s.variantes > 1 ? s.variantes : null
-                  return (
-                    <li key={i} className="autocomplete-item" onMouseDown={() => selectSuggestion(nombre)}>
-                      <span className="autocomplete-nombre">{nombre}</span>
-                      {variantes && (
-                        <span className="autocomplete-variantes">{variantes} variantes</span>
-                      )}
-                    </li>
-                  )
-                })}
+                {suggestions.map((s, i) => (
+                  <li key={i} className="autocomplete-item" onMouseDown={() => selectSuggestion(s.nombre)}>
+                    <span className="autocomplete-nombre">{s.nombre}</span>
+                    {s.variantes > 1 && (
+                      <span className="autocomplete-variantes">{s.variantes} variantes</span>
+                    )}
+                  </li>
+                ))}
               </ul>
             )}
           </div>
