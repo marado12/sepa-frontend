@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 
+// Nota: el selector de día fue movido a HomeScreen
+
 const CATEGORIAS = ['Lácteos','Panadería','Secos','Aceites','Infusiones','Carnes','Limpieza','Higiene','Conservas','Bebidas','Otro']
 const UNIDADES = ['unidad', 'kg', 'gramos', 'litro', 'ml', 'pack']
 
@@ -33,34 +35,6 @@ function useCacheStatus() {
   return status
 }
 
-function _diasFallback() {
-  const NOMBRES = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
-  const hoy = new Date()
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(hoy); d.setDate(hoy.getDate() + i)
-    const diaNum = d.getDay() === 0 ? 6 : d.getDay() - 1 // JS: 0=Dom → SEPA: 6=Dom
-    return {
-      dia: diaNum,
-      label: (i === 0 ? 'Hoy · ' : i === 1 ? 'Mañana · ' : '') + NOMBRES[diaNum],
-      fecha: d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }),
-      promos: [],
-    }
-  })
-}
-
-function useDias() {
-  const [dias, setDias] = useState(_diasFallback) // ← muestra días inmediatamente
-  useEffect(() => {
-    fetch(`${API}/api/dias`)
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json()
-      })
-      .then(d => { if (d.dias?.length) setDias(d.dias) })
-      .catch(err => console.warn('[useDias] fetch falló, usando días locales:', err))
-  }, [])
-  return dias
-}
 
 function useProductSearch(query) {
   const [suggestions, setSuggestions] = useState([])
@@ -158,23 +132,10 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [showHistorial, setShowHistorial] = useState(false)
   const [nombreCanasta, setNombreCanasta] = useState('')
-  // diaSeleccionado: se inicializa con hoy, se puede cambiar con el selector
-  const [diaSeleccionado, setDiaSeleccionado] = useState(() => {
-    const hoy = new Date().getDay()
-    return hoy === 0 ? 6 : hoy - 1 // JS Dom=0 → SEPA Lun=0
-  })
   const suggestionsRef = useRef(null)
 
   const { suggestions, searching } = useProductSearch(newItem.nombre)
   const cacheStatus = useCacheStatus()
-  const dias = useDias()
-
-  // Cuando el backend devuelve días con promos, actualizar selección al primero si cambió
-  useEffect(() => {
-    if (dias.length > 0 && diaSeleccionado === null) {
-      setDiaSeleccionado(dias[0].dia)
-    }
-  }, [dias, diaSeleccionado])
 
   // Mostrar sugerencias automáticamente cuando llegan del servidor
   useEffect(() => {
@@ -248,7 +209,7 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
   }
 
   const handleSave = () => {
-    onSave(items, nombreCanasta.trim() || undefined, diaSeleccionado)
+    onSave(items, nombreCanasta.trim() || undefined)
   }
 
   if (loading || !items) {
@@ -289,27 +250,6 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
                 await fetch(`${API}/refresh`, { method: 'POST' })
               }}>Iniciar carga</button></>
           }
-        </div>
-      )}
-
-      {/* Selector de día */}
-      {dias.length > 0 && (
-        <div className="dia-selector">
-          <span className="dia-selector-label">¿Cuándo vas a ir?</span>
-          <div className="dia-selector-options">
-            {dias.map(d => (
-              <button
-                key={d.dia + d.fecha}
-                className={`dia-btn${diaSeleccionado === d.dia ? ' dia-btn-active' : ''}`}
-                onClick={() => setDiaSeleccionado(d.dia)}
-                title={d.promos.length > 0 ? `Promos: ${d.promos.join(', ')}` : 'Sin promos especiales'}
-              >
-                <span className="dia-btn-label">{d.label}</span>
-                <span className="dia-btn-fecha">{d.fecha}</span>
-                {d.promos.length > 0 && <span className="dia-btn-promo">🏷 {d.promos.length}</span>}
-              </button>
-            ))}
-          </div>
         </div>
       )}
 
@@ -399,6 +339,70 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
           <input
             className="add-input"
             placeholder="Marca preferida (opcional, scoring suave)"
+            value={newItem.marca}
+            onChange={e => setNewItem(p => ({ ...p, marca: e.target.value }))}
+          />
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label className="add-label">
+              Marcas aceptadas <span className="hint">(filtra estrictamente — dejar vacío = cualquier marca)</span>
+            </label>
+            <MarcasAceptadasInput
+              value={newItem.marcas_aceptadas}
+              onChange={(val) => setNewItem(p => ({ ...p, marcas_aceptadas: val }))}
+            />
+          </div>
+
+          <div className="add-row">
+            <input
+              type="number"
+              className="add-input add-input-sm"
+              placeholder="Cant."
+              min={0.5}
+              step={0.5}
+              value={newItem.cantidad}
+              onChange={e => setNewItem(p => ({ ...p, cantidad: +e.target.value }))}
+            />
+            <select
+              className="add-input add-input-sm"
+              value={newItem.unidad}
+              onChange={e => setNewItem(p => ({ ...p, unidad: e.target.value }))}
+            >
+              {UNIDADES.map(u => <option key={u}>{u}</option>)}
+            </select>
+            <select
+              className="add-input"
+              value={newItem.categoria}
+              onChange={e => setNewItem(p => ({ ...p, categoria: e.target.value }))}
+            >
+              {CATEGORIAS.map(c => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+          <div className="add-actions">
+            <button className="btn-primary" onClick={addItem}>Agregar</button>
+            <button className="btn-secondary" onClick={() => { setShowAdd(false); setNewItem(ITEM_VACIO) }}>Cancelar</button>
+          </div>
+        </div>
+      ) : (
+        <button className="btn-add-item" onClick={() => setShowAdd(true)}>
+          + Agregar producto
+        </button>
+      )}
+
+      <div className="basket-footer">
+        <input
+          className="add-input basket-nombre-input"
+          placeholder="Nombre para guardar (ej: Casa, Trabajo…)"
+          value={nombreCanasta}
+          onChange={e => setNombreCanasta(e.target.value)}
+        />
+        <button className="btn-primary btn-save" onClick={handleSave}>
+          Guardar canasta
+        </button>
+      </div>
+    </div>
+  )
+}
             value={newItem.marca}
             onChange={e => setNewItem(p => ({ ...p, marca: e.target.value }))}
           />
