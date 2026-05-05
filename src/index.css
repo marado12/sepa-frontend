@@ -868,6 +868,28 @@ body {
 .hint-warning { color: #c47a00; font-size: 0.8rem; margin-top: 4px; }
 .basket-item-marcas { font-size: 0.75rem; color: #4a7cdc; font-style: italic; }
 
+/* Unidad auto-detectada desde SEPA */
+.input-locked {
+  background: var(--verde-light) !important;
+  border-color: var(--verde) !important;
+  color: var(--verde);
+  cursor: default;
+}
+
+.btn-unlock {
+  background: none;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0 0.5rem;
+  height: 38px;
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+.btn-unlock:hover { color: var(--verde); border-color: var(--verde); }
+
 /* ── Banner estado cache ── */
 .cache-banner {
   display: flex;
