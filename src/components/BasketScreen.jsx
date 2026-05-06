@@ -127,20 +127,7 @@ function MarcasInput({ value, onChange }) {
   )
 }
 
-// ── Share helper ──────────────────────────────────────────────────────────────
 
-/**
- * Genera la URL compartible con la canasta codificada en el hash.
- * Usa btoa para base64 y encodeURIComponent para que sea URL-safe.
- */
-function generarUrlCanasta(items) {
-  const json = JSON.stringify(items)
-  const encoded = encodeURIComponent(btoa(json))
-  const base = window.location.origin + window.location.pathname
-  return `${base}#canasta=${encoded}`
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 export default function BasketScreen({ canasta, historial = [], onBack, onSave, fetchDefaultCanasta }) {
   const [items, setItems] = useState(null)
@@ -151,7 +138,7 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
   const [showHistorial, setShowHistorial] = useState(false)
   const [nombreCanasta, setNombreCanasta] = useState('')
   const [unidadBloqueada, setUnidadBloqueada] = useState(false)
-  const [shareMsg, setShareMsg] = useState(null) // 'copiado' | 'error' | null
+
   const suggestionsRef = useRef(null)
 
   const { suggestions, searching } = useProductSearch(newItem.nombre)
@@ -254,33 +241,6 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
     onSave(items, nombreCanasta.trim() || undefined)
   }
 
-  // ── Compartir canasta ───────────────────────────────────────────────────────
-  const handleShare = async () => {
-    if (!items || items.length === 0) return
-    const url = generarUrlCanasta(items)
-    try {
-      await navigator.clipboard.writeText(url)
-      setShareMsg('copiado')
-    } catch {
-      // Fallback por si clipboard API no está disponible (http, algunos móviles)
-      try {
-        const ta = document.createElement('textarea')
-        ta.value = url
-        ta.style.position = 'fixed'
-        ta.style.opacity = '0'
-        document.body.appendChild(ta)
-        ta.focus()
-        ta.select()
-        document.execCommand('copy')
-        document.body.removeChild(ta)
-        setShareMsg('copiado')
-      } catch {
-        setShareMsg('error')
-      }
-    }
-    setTimeout(() => setShareMsg(null), 2500)
-  }
-
   if (loading || !items) {
     return (
       <div className="basket-screen">
@@ -305,29 +265,10 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
         <button className="back-btn" onClick={onBack}>← Volver</button>
         <h2 className="basket-title">Mi Canasta</h2>
         <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
-          {/* Compartir */}
-          <button
-            className="back-btn"
-            onClick={handleShare}
-            disabled={!items || items.length === 0}
-            title="Compartir canasta por link"
-            style={{ position: 'relative' }}
-          >
-            {shareMsg === 'copiado' ? '✓' : shareMsg === 'error' ? '✗' : '🔗'}
-          </button>
           <button className="back-btn" onClick={clearAll} title="Borrar todos los productos">🗑</button>
           <button className="back-btn" onClick={resetDefault} title="Restablecer canasta default">↺</button>
         </div>
       </div>
-
-      {/* Feedback del share */}
-      {shareMsg && (
-        <div className={`share-toast ${shareMsg === 'copiado' ? 'share-toast-ok' : 'share-toast-err'}`}>
-          {shareMsg === 'copiado'
-            ? '✓ Link copiado al portapapeles'
-            : '✗ No se pudo copiar. Copiá la URL manualmente desde la barra del navegador.'}
-        </div>
-      )}
 
       {!cacheStatus.listo && (
         <div className="cache-banner">
