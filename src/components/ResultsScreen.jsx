@@ -95,7 +95,8 @@ export default function ResultsScreen({ results, location, radioKm, onBack, onEd
   const [tab, setTab] = useState('ranking') // ranking | optimo
   const [expanded, setExpanded] = useState(null)
 
-  const { ranking, optimo, elapsed_s, n_precios } = results
+  const { ranking, optimo, elapsed_s, n_precios, fecha_datos } = results
+
 
   const best = ranking[0]
   const worst = ranking[ranking.length - 1]
@@ -225,6 +226,13 @@ export default function ResultsScreen({ results, location, radioKm, onBack, onEd
         <p className="results-meta">
           {n_precios?.toLocaleString('es-AR')} precios procesados en {elapsed_s}s
         </p>
+        {fecha_datos && (
+          <p className="results-staleness">
+            📅 Datos SEPA del {new Date(fecha_datos + 'T12:00:00').toLocaleDateString('es-AR', {
+              weekday: 'long', day: 'numeric', month: 'long'
+            })}
+          </p>
+        )}
       </div>
     </div>
   )
@@ -260,6 +268,11 @@ function CadenaCard({ item, rank, expanded, onToggle }) {
           </div>
           <div className="cadena-items">
             {item.n_encontrados}/{item.n_total} productos encontrados
+            {item.cobertura_pct < 70 && (
+              <span className="cobertura-warning" title="Ranking puede estar distorsionado">
+                ⚠️ {item.cobertura_pct}% cobertura
+              </span>
+            )}
           </div>
         </div>
 

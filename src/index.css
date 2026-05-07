@@ -1376,3 +1376,18 @@ body {
   border: 1px solid var(--border);
 }
 
+/* ── Cobertura baja en cadena card ── */
+.cobertura-warning {
+  margin-left: 0.4rem;
+  font-size: 0.75rem;
+  color: #92400e;          /* ámbar oscuro, consistente con .bancos-aclaracion */
+  font-weight: 500;
+}
+
+/* ── Staleness indicator en results footer ── */
+.results-staleness {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  margin-top: 0.25rem;
+}
+
