@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect } from 'react'
 import HomeScreen from './components/HomeScreen'
 import ResultsScreen from './components/ResultsScreen'
 import BasketScreen from './components/BasketScreen'
+import BancosScreen from './components/BancosScreen'
 import './index.css'
 
 posthog.init('phc_uEmS3FzSdncCKRCNPu82HChfR9mF77TKtPTThVVEuWt7', { api_host: 'https://eu.posthog.com' })
@@ -64,7 +65,7 @@ function leerCanastaDesdHash() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [screen, setScreen] = useState('home') // home | loading | results | basket
+  const [screen, setScreen] = useState('home') // home | loading | bancos | results | basket
   const [location, setLocation] = useState(null)
   const [radioKm, setRadioKm] = useState(5)
   const [canasta, setCanasta] = useState(null) // null = usar default del backend
@@ -72,6 +73,8 @@ export default function App() {
   const [results, setResults] = useState(null)
   const [loadingMsg, setLoadingMsg] = useState('')
   const [error, setError] = useState(null)
+  // Datos crudos del /api/comparar antes de aplicar promos (para la pantalla de bancos)
+  const [pendingCompareData, setPendingCompareData] = useState(null)
 
   const API = import.meta.env.VITE_API_URL || 'https://sepa-comparador-production.up.railway.app'
 
@@ -97,6 +100,7 @@ export default function App() {
     }
   }, [API, canasta])
 
+  // ── Paso 1: comparar sin promos y guardar resultado intermedio ───────────
   const handleCompare = useCallback(async (loc) => {
     setLocation(loc)
     setScreen('loading')
@@ -125,8 +129,10 @@ export default function App() {
     try {
       const body = {
         radio_km: radioKm,
-        canasta: canasta || [],   // [] = el backend usa la canasta default
+        canasta: canasta || [],
+        // Sin promos ni bancos — se eligen en la siguiente pantalla
         promos: [],
+        bancos_seleccionados: [],
         ...(diaSeleccionado !== null && { dia: diaSeleccionado }),
       }
       if (loc.lat != null) {
@@ -150,8 +156,49 @@ export default function App() {
       }
 
       const data = await res.json()
+      // Guardar resultado y pasar a pantalla de selección de bancos
+      setPendingCompareData({ data, body })
+      setScreen('bancos')
+    } catch (e) {
+      clearInterval(interval)
+      posthog.capture('comparacion_error', {
+        mensaje: e.message,
+        tipo_ubicacion: loc.lat != null ? 'gps' : 'provincia',
+      })
+      setError(e.message)
+      setScreen('home')
+    }
+  }, [API, radioKm, canasta, diaSeleccionado])
+
+  // ── Paso 2a: el usuario eligió bancos → re-comparar con promos ───────────
+  const handleAplicarBancos = useCallback(async (bancosSeleccionados) => {
+    if (!pendingCompareData) return
+    const { body } = pendingCompareData
+
+    setScreen('loading')
+    setLoadingMsg('Aplicando reintegros bancarios...')
+
+    try {
+      const bodyConBancos = {
+        ...body,
+        bancos_seleccionados: bancosSeleccionados,
+        promos: [],
+      }
+      const res = await fetch(`${API}/api/comparar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyConBancos),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || `Error ${res.status}`)
+      }
+
+      const data = await res.json()
       posthog.capture('comparacion_completada', {
         n_cadenas: data.ranking.length,
+        con_bancos: bancosSeleccionados.length,
         ahorro_maximo: data.ranking.length > 1
           ? data.ranking[data.ranking.length - 1].total_final - data.ranking[0].total_final
           : 0,
@@ -160,16 +207,24 @@ export default function App() {
       setResults(data)
       setScreen('results')
     } catch (e) {
-      clearInterval(interval)
-      posthog.capture('comparacion_error', {   // ← agregás estas líneas
-        mensaje: e.message,
-        tipo_ubicacion: loc.lat != null ? 'gps' : 'provincia',
-      })
       setError(e.message)
       setScreen('home')
     }
-    
-  }, [API, radioKm, canasta, diaSeleccionado])
+  }, [API, pendingCompareData])
+
+  // ── Paso 2b: el usuario omite bancos → usar resultado sin promos ─────────
+  const handleOmitirBancos = useCallback(() => {
+    if (!pendingCompareData) { setScreen('home'); return }
+    const { data } = pendingCompareData
+    posthog.capture('comparacion_completada', {
+      n_cadenas: data.ranking.length,
+      con_bancos: 0,
+      sin_promos: true,
+      elapsed_s: data.elapsed_s,
+    })
+    setResults(data)
+    setScreen('results')
+  }, [pendingCompareData])
 
   // Al guardar desde BasketScreen: actualiza estado + persiste en historial
   const handleSaveCanasta = useCallback((items, nombre) => {
@@ -190,6 +245,19 @@ export default function App() {
     )
   }
 
+  if (screen === 'bancos') {
+    // Extraer las cadenas encontradas para filtrar bancos relevantes
+    const cadenasEncontradas = pendingCompareData?.data?.ranking?.map(r => r.cadena) || []
+    return (
+      <BancosScreen
+        cadenas={cadenasEncontradas}
+        diaSeleccionado={diaSeleccionado}
+        onAplicar={handleAplicarBancos}
+        onOmitir={handleOmitirBancos}
+      />
+    )
+  }
+
   if (screen === 'results' && results) {
     return (
       <ResultsScreen
@@ -198,7 +266,7 @@ export default function App() {
         radioKm={radioKm}
         onBack={() => setScreen('home')}
         onEditBasket={() => setScreen('basket')}
-        onRecompare={() => handleCompare(location)}
+        onRecompare={() => setScreen('bancos')}
       />
     )
   }
