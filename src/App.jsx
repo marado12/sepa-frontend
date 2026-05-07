@@ -3,6 +3,8 @@ import HomeScreen from './components/HomeScreen'
 import ResultsScreen from './components/ResultsScreen'
 import BasketScreen from './components/BasketScreen'
 import './index.css'
+import posthog from 'posthog-js'
+posthog.init('TU_API_KEY', { api_host: 'https://app.posthog.com' })
 
 const STORAGE_KEY = 'sepa_canasta_historial'
 const MAX_HISTORIAL = 5
@@ -99,6 +101,13 @@ export default function App() {
     setScreen('loading')
     setError(null)
 
+    posthog.capture('comparacion_iniciada', {
+      radio_km: radioKm,
+      tiene_canasta_custom: !!canasta,
+      dia_seleccionado: diaSeleccionado,
+      tipo_ubicacion: loc.lat != null ? 'gps' : 'provincia',
+    })
+
     const msgs = [
       'Conectando con datos SEPA...',
       'Descargando precios del gobierno (puede tomar 30s la primera vez)...',
@@ -140,6 +149,13 @@ export default function App() {
       }
 
       const data = await res.json()
+      posthog.capture('comparacion_completada', {
+        n_cadenas: data.ranking.length,
+        ahorro_maximo: data.ranking.length > 1
+          ? data.ranking[data.ranking.length - 1].total_final - data.ranking[0].total_final
+          : 0,
+        elapsed_s: data.elapsed_s,
+      })
       setResults(data)
       setScreen('results')
     } catch (e) {
