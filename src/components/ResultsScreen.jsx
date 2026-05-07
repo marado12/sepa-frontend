@@ -99,7 +99,17 @@ export default function ResultsScreen({ results, location, radioKm, onBack, onEd
 
   const best = ranking[0]
   const worst = ranking[ranking.length - 1]
-  const savings = worst && best ? worst.total_final - best.total_final : 0
+
+  // "Ahorrás hasta" = precio de lista más caro (sin descuento bancario) - mejor precio final
+  // Así no se minimiza el ahorro al comparar dos precios ya con descuento.
+  // total_sin_promo es el total antes de reintegro. Si no viene, usamos total_final.
+  const precioListaMasCaro = worst
+    ? (worst.total_sin_promo ?? worst.total_final)
+    : 0
+  const mejorPrecioFinal = best
+    ? best.total_final
+    : 0
+  const savings = precioListaMasCaro - mejorPrecioFinal
 
   const loc = location?.provincia
     ? `${location.provincia}`
