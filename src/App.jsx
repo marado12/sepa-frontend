@@ -1,10 +1,11 @@
+import posthog from 'posthog-js'
 import { useState, useCallback, useEffect } from 'react'
 import HomeScreen from './components/HomeScreen'
 import ResultsScreen from './components/ResultsScreen'
 import BasketScreen from './components/BasketScreen'
 import './index.css'
-import posthog from 'posthog-js'
-posthog.init('TU_API_KEY', { api_host: 'https://app.posthog.com' })
+
+posthog.init('phc_uEmS3FzSdncCKRCNPu82HChfR9mF77TKtPTThVVEuWt7', { api_host: 'https://eu.posthog.com' })
 
 const STORAGE_KEY = 'sepa_canasta_historial'
 const MAX_HISTORIAL = 5
@@ -160,9 +161,14 @@ export default function App() {
       setScreen('results')
     } catch (e) {
       clearInterval(interval)
+      posthog.capture('comparacion_error', {   // ← agregás estas líneas
+        mensaje: e.message,
+        tipo_ubicacion: loc.lat != null ? 'gps' : 'provincia',
+      })
       setError(e.message)
       setScreen('home')
     }
+    
   }, [API, radioKm, canasta, diaSeleccionado])
 
   // Al guardar desde BasketScreen: actualiza estado + persiste en historial
