@@ -129,6 +129,65 @@ function MarcasInput({ value, onChange }) {
 
 
 
+/**
+ * Input de nombre con autocomplete del SEPA.
+ * Reutilizable tanto para agregar como para editar productos.
+ */
+function ProductoAutocompleteInput({ value, onChange, onSelectSuggestion, autoFocus = false, placeholder = 'Nombre del producto' }) {
+  const [showSugg, setShowSugg] = useState(false)
+  const wrapperRef = useRef(null)
+  const { suggestions, searching } = useProductSearch(value)
+
+  useEffect(() => {
+    if (suggestions.length > 0) setShowSugg(true)
+  }, [suggestions])
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setShowSugg(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const handleSelect = (nombre) => {
+    onSelectSuggestion(nombre)
+    setShowSugg(false)
+  }
+
+  return (
+    <div className="autocomplete-wrapper" ref={wrapperRef}>
+      <input
+        className="add-input"
+        placeholder={placeholder}
+        value={value}
+        autoComplete="off"
+        autoFocus={autoFocus}
+        onChange={e => {
+          onChange(e.target.value)
+          setShowSugg(true)
+        }}
+        onFocus={() => suggestions.length > 0 && setShowSugg(true)}
+      />
+      {searching && <span className="autocomplete-searching">🔍</span>}
+      {showSugg && suggestions.length > 0 && (
+        <ul className="autocomplete-list">
+          {suggestions.map((s, i) => (
+            <li key={i} className="autocomplete-item" onMouseDown={() => handleSelect(s.nombre)}>
+              <span className="autocomplete-nombre">{s.nombre}</span>
+              {s.variantes > 1 && (
+                <span className="autocomplete-variantes">{s.variantes} variantes</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export default function BasketScreen({ canasta, historial = [], onBack, onSave, fetchDefaultCanasta }) {
   const [items, setItems] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -313,12 +372,18 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
               <div key={item._idx} className="basket-item">
                 {editingIdx === item._idx ? (
                   <div className="basket-item-edit">
-                    <input
-                      className="add-input"
+                    <ProductoAutocompleteInput
                       value={editItem.nombre}
-                      onChange={e => setEditItem(p => ({ ...p, nombre: e.target.value }))}
-                      placeholder="Nombre del producto"
                       autoFocus
+                      onChange={nombre => setEditItem(p => ({ ...p, nombre }))}
+                      onSelectSuggestion={nombre => {
+                        const unidadDetectada = detectarUnidad(nombre)
+                        setEditItem(p => ({
+                          ...p,
+                          nombre,
+                          ...(unidadDetectada ? { unidad: unidadDetectada } : {}),
+                        }))
+                      }}
                     />
                     <div className="add-row">
                       <input
@@ -374,33 +439,14 @@ export default function BasketScreen({ canasta, historial = [], onBack, onSave, 
 
       {showAdd ? (
         <div className="add-item-form">
-          <div className="autocomplete-wrapper" ref={suggestionsRef}>
-            <input
-              className="add-input"
-              placeholder="Nombre del producto"
-              value={newItem.nombre}
-              autoComplete="off"
-              onChange={e => {
-                setNewItem(p => ({ ...p, nombre: e.target.value }))
-                setUnidadBloqueada(false)
-                setShowSuggestions(true)
-              }}
-              onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-            />
-            {searching && <span className="autocomplete-searching">🔍</span>}
-            {showSuggestions && suggestions.length > 0 && (
-              <ul className="autocomplete-list">
-                {suggestions.map((s, i) => (
-                  <li key={i} className="autocomplete-item" onMouseDown={() => selectSuggestion(s.nombre)}>
-                    <span className="autocomplete-nombre">{s.nombre}</span>
-                    {s.variantes > 1 && (
-                      <span className="autocomplete-variantes">{s.variantes} variantes</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <ProductoAutocompleteInput
+            value={newItem.nombre}
+            onChange={nombre => {
+              setNewItem(p => ({ ...p, nombre }))
+              setUnidadBloqueada(false)
+            }}
+            onSelectSuggestion={selectSuggestion}
+          />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label className="add-label">
