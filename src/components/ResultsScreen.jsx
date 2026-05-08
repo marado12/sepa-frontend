@@ -101,16 +101,19 @@ export default function ResultsScreen({ results, location, radioKm, onBack, onEd
   const best = ranking[0]
   const worst = ranking[ranking.length - 1]
 
-  // "Ahorrás hasta" = precio de lista más caro (sin descuento bancario) - mejor precio final
-  // Así no se minimiza el ahorro al comparar dos precios ya con descuento.
-  // total_sin_promo es el total antes de reintegro. Si no viene, usamos total_final.
-  const precioListaMasCaro = worst
-    ? (worst.total_sin_promo ?? worst.total_final)
-    : 0
-  const mejorPrecioFinal = best
-    ? best.total_final
-    : 0
-  const savings = precioListaMasCaro - mejorPrecioFinal
+  // Ranking: "Ahorrás hasta" = super más caro (sin promo) vs mejor precio final (con promo)
+  const rankingPeorBase = worst ? (worst.total_sin_promo ?? worst.total_final) : 0
+  const rankingMejorFinal = best ? best.total_final : 0
+  const savingsRanking = rankingPeorBase - rankingMejorFinal
+
+  // Óptimo: "Ahorrás hasta" = super más caro (sin promo) vs total óptimo
+  // El óptimo no aplica promos bancarias (compra en varios supers), así que
+  // comparamos contra el peor super sin promo para ser justos.
+  const optimoTotal = optimo?.total_optimo ?? 0
+  const savingsOptimo = rankingPeorBase - optimoTotal
+
+  // Compatibilidad con el resto del código
+  const savings = tab === 'optimo' ? savingsOptimo : savingsRanking
 
   const loc = location?.provincia
     ? `${location.provincia}`
@@ -138,7 +141,14 @@ export default function ResultsScreen({ results, location, radioKm, onBack, onEd
         <div className="savings-banner">
           <span className="savings-text">Ahorrás hasta</span>
           <span className="savings-amount">{fmt(savings)}</span>
-          <span className="savings-text">eligiendo bien</span>
+          <span className="savings-text">
+            {tab === 'optimo' ? 'con canasta óptima' : 'eligiendo bien'}
+          </span>
+          {tab === 'ranking' && best?.reintegro > 0 && (
+            <span className="savings-subtext">
+              incluye reintegro {best.mejor_promo}
+            </span>
+          )}
         </div>
       )}
 
@@ -176,9 +186,14 @@ export default function ResultsScreen({ results, location, radioKm, onBack, onEd
           <div className="optimo-summary">
             <div className="optimo-total-label">Total canasta óptima</div>
             <div className="optimo-total-value">{fmt(optimo.total_optimo)}</div>
-            {savings > 0 && best && (
+            {best && (
               <div className="optimo-vs">
-                vs {fmt(best.total_final)} en {best.cadena} solo
+                vs {fmt(best.total_final)} en {best.cadena} (más barato en un solo super)
+              </div>
+            )}
+            {worst && savingsOptimo > 0 && (
+              <div className="optimo-vs optimo-vs-saving">
+                ahorrás {fmt(savingsOptimo)} vs {worst.cadena} ({fmt(rankingPeorBase)})
               </div>
             )}
           </div>
@@ -277,11 +292,16 @@ function CadenaCard({ item, rank, expanded, onToggle }) {
         </div>
 
         <div className="cadena-right">
-          <div className="cadena-total">{fmt(item.total_final)}</div>
-          {item.reintegro > 0 && (
-            <div className="cadena-promo">
-              -{fmt(item.reintegro)} con {item.mejor_promo}
-            </div>
+          {item.reintegro > 0 ? (
+            <>
+              <div className="cadena-total-base">{fmt(item.total_base)}</div>
+              <div className="cadena-total cadena-total-final">{fmt(item.total_final)}</div>
+              <div className="cadena-promo">
+                -{fmt(item.reintegro)} · {item.mejor_promo}
+              </div>
+            </>
+          ) : (
+            <div className="cadena-total">{fmt(item.total_final)}</div>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             {/* Botón compartir esta cadena */}
