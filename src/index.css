@@ -1490,3 +1490,53 @@ body {
 .origen-precios-texto {
   flex: 1;
 }
+
+
+/* ── Origen de las promos (roadmap 4.1) ───────────────────────────────────────
+   El backend distingue la promo leída del sitio de la cargada a mano. La del
+   sitio es de hoy por construcción; la manual puede estar vencida, y una promo
+   vencida produce una recomendación equivocada que el usuario no puede detectar.
+   Se marcan distinto para que se pueda saber cuál mirar con desconfianza. */
+.promo-origen {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.promo-origen--sitio {
+  background: var(--verde-light);
+  color: var(--verde-dark);
+  border: 1px solid rgba(26, 122, 74, 0.3);
+}
+.promo-origen--manual {
+  background: #f2f0ec;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+
+/* Promos que NO bajan el total: "2da unidad 70%", cuotas sin interés.
+   Van separadas del precio a propósito — si se mostraran junto al total
+   parecerían un descuento aplicado, que es exactamente lo que no son. */
+.promo-sin-descuento {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: var(--naranja-light);
+  border: 1px dashed rgba(232, 93, 26, 0.35);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text-2);
+}
+.promo-nota {
+  font-style: italic;
+  color: var(--text-3);
+  font-size: 11px;
+}
