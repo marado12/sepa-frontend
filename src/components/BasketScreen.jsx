@@ -1,12 +1,191 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { CantidadPackSelector, PrecioNormalizado } from "./PrecioNormalizado";
+import "./precio-normalizado.css";
+import CacheBanner from './CacheBanner'
+import { API } from '../useCacheStatus'
 
-const CATEGORIAS = ['Lácteos','Panadería','Secos','Aceites','Infusiones','Carnes','Limpieza','Higiene','Conservas','Bebidas','Otro']
+const UNIDADES = ['unidad', 'kg', 'gramos', 'litro', 'ml', 'pack']
 
-export default function BasketScreen({ canasta, onBack, onSave, fetchDefaultCanasta }) {
+const ITEM_VACIO = {
+  nombre: '',
+  cantidad: 1,
+  unidad: 'unidad',
+  categoria: 'Otro',
+  marcas_aceptadas: [],
+}
+
+function detectarUnidad(desc) {
+  const d = desc.toLowerCase()
+  if (/\d\s*(kg|kilo)/.test(d))            return 'kg'
+  if (/\d\s*(g|gr|gramos?)\b/.test(d))     return 'gramos'
+  if (/\d\s*(ml|cc)\b/.test(d))            return 'ml'
+  if (/\d\s*(l|lt|lts|litros?)\b/.test(d)) return 'litro'
+  return null
+}
+
+function useProductSearch(query) {
+  const [suggestions, setSuggestions] = useState([])
+  const [searching, setSearching] = useState(false)
+  const debounceRef = useRef(null)
+
+  useEffect(() => {
+    if (query.length < 2) {
+      setSuggestions([])
+      return
+    }
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true)
+      try {
+        const res = await fetch(`${API}/api/buscar-productos?q=${encodeURIComponent(query)}&limite=8`)
+        const data = await res.json()
+        setSuggestions(
+          (data.sugerencias || []).map(s =>
+            typeof s === 'string' ? { nombre: s, variantes: null } : s
+          )
+        )
+      } catch {
+        setSuggestions([])
+      } finally {
+        setSearching(false)
+      }
+    }, 300)
+
+    return () => clearTimeout(debounceRef.current)
+  }, [query])
+
+  return { suggestions, searching }
+}
+
+function MarcasInput({ value, onChange }) {
+  const inputRef = useRef(null)
+
+  const addMarca = (raw) => {
+    const val = raw.trim()
+    if (val && !value.includes(val)) onChange([...value, val])
+  }
+
+  const removeMarca = (i) => onChange(value.filter((_, j) => j !== i))
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      addMarca(e.target.value)
+      e.target.value = ''
+    } else if (e.key === 'Backspace' && e.target.value === '' && value.length > 0) {
+      removeMarca(value.length - 1)
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div className="chips-input" onClick={() => inputRef.current?.focus()}>
+        {value.map((m, i) => (
+          <span key={i} className="chip">
+            {m}
+            <button type="button" onClick={() => removeMarca(i)}>×</button>
+          </span>
+        ))}
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder={value.length === 0 ? 'Ej: La Serenísima — Enter para agregar' : 'Agregar otra…'}
+          onKeyDown={handleKeyDown}
+          onBlur={(e) => {
+            if (e.target.value.trim()) {
+              addMarca(e.target.value)
+              e.target.value = ''
+            }
+          }}
+        />
+      </div>
+      {value.length > 0 && (
+        <p className="hint-warning">
+          Se elegirá la más barata entre estas marcas. Si ninguna aparece en SEPA, el producto quedará sin precio.
+        </p>
+      )}
+    </div>
+  )
+}
+
+
+
+/**
+ * Input de nombre con autocomplete del SEPA.
+ * Reutilizable tanto para agregar como para editar productos.
+ */
+function ProductoAutocompleteInput({ value, onChange, onSelectSuggestion, autoFocus = false, placeholder = 'Nombre del producto' }) {
+  const [showSugg, setShowSugg] = useState(false)
+  const wrapperRef = useRef(null)
+  const { suggestions, searching } = useProductSearch(value)
+
+  useEffect(() => {
+    if (suggestions.length > 0) setShowSugg(true)
+  }, [suggestions])
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setShowSugg(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const handleSelect = (nombre) => {
+    onSelectSuggestion(nombre)
+    setShowSugg(false)
+  }
+
+  return (
+    <div className="autocomplete-wrapper" ref={wrapperRef}>
+      <input
+        className="add-input"
+        placeholder={placeholder}
+        value={value}
+        autoComplete="off"
+        autoFocus={autoFocus}
+        onChange={e => {
+          onChange(e.target.value)
+          setShowSugg(true)
+        }}
+        onFocus={() => suggestions.length > 0 && setShowSugg(true)}
+      />
+      {searching && <span className="autocomplete-searching">🔍</span>}
+      {showSugg && suggestions.length > 0 && (
+        <ul className="autocomplete-list">
+          {suggestions.map((s, i) => (
+            <li key={i} className="autocomplete-item" onMouseDown={() => handleSelect(s.nombre)}>
+              <span className="autocomplete-nombre">{s.nombre}</span>
+              {s.variantes > 1 && (
+                <span className="autocomplete-variantes">{s.variantes} variantes</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+export default function BasketScreen({ cacheStatus, canasta, historial = [], onBack, onSave, fetchDefaultCanasta }) {
   const [items, setItems] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [newItem, setNewItem] = useState({ nombre: '', cantidad: 1, unidad: 'unidad', categoria: 'Otro' })
+  const [newItem, setNewItem] = useState(ITEM_VACIO)
   const [showAdd, setShowAdd] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [showHistorial, setShowHistorial] = useState(false)
+  const [nombreCanasta, setNombreCanasta] = useState('')
+  const [unidadBloqueada, setUnidadBloqueada] = useState(false)
+
+  const suggestionsRef = useRef(null)
+
+  const { suggestions, searching } = useProductSearch(newItem.nombre)
+
+  useEffect(() => {
+    if (suggestions.length > 0) setShowSuggestions(true)
+  }, [suggestions])
 
   useEffect(() => {
     if (canasta) {
@@ -20,14 +199,59 @@ export default function BasketScreen({ canasta, onBack, onSave, fetchDefaultCana
     }
   }, [])
 
+  useEffect(() => {
+    const handler = (e) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target)) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const [editingIdx, setEditingIdx] = useState(null)
+  const [editItem, setEditItem] = useState(null)
+
+  const startEdit = (item) => {
+    setEditingIdx(item._idx)
+    setEditItem({ ...item })
+  }
+
+  const cancelEdit = () => {
+    setEditingIdx(null)
+    setEditItem(null)
+  }
+
+  const saveEdit = () => {
+    if (!editItem.nombre.trim()) return
+    setItems(prev => prev.map((item, idx) =>
+      idx === editingIdx ? {
+        ...editItem,
+        palabras_clave: [editItem.nombre.toLowerCase()],
+      } : item
+    ))
+    setEditingIdx(null)
+    setEditItem(null)
+  }
+
   const updateQty = (i, delta) => {
     setItems(prev => prev.map((item, idx) =>
       idx === i ? { ...item, cantidad: Math.max(0.5, +(item.cantidad + delta).toFixed(1)) } : item
     ))
   }
 
-  const removeItem = (i) => {
-    setItems(prev => prev.filter((_, idx) => idx !== i))
+  const removeItem = (i) => setItems(prev => prev.filter((_, idx) => idx !== i))
+  const clearAll = () => setItems([])
+
+  const selectSuggestion = (nombre) => {
+    const unidadDetectada = detectarUnidad(nombre)
+    setNewItem(p => ({
+      ...p,
+      nombre,
+      ...(unidadDetectada ? { unidad: unidadDetectada } : {}),
+    }))
+    setUnidadBloqueada(!!unidadDetectada)
+    setShowSuggestions(false)
   }
 
   const addItem = () => {
@@ -35,17 +259,25 @@ export default function BasketScreen({ canasta, onBack, onSave, fetchDefaultCana
     setItems(prev => [...prev, {
       ...newItem,
       palabras_clave: [newItem.nombre.toLowerCase()],
-      marca: '',
       cantidad_texto: '',
     }])
-    setNewItem({ nombre: '', cantidad: 1, unidad: 'unidad', categoria: 'Otro' })
+    setNewItem(ITEM_VACIO)
+    setUnidadBloqueada(false)
     setShowAdd(false)
   }
 
   const resetDefault = () => {
-    fetchDefaultCanasta().then(c => {
-      if (c) setItems([...c])
-    })
+    fetchDefaultCanasta().then(c => { if (c) setItems([...c]) })
+  }
+
+  const cargarDesdeHistorial = (entry) => {
+    setItems([...entry.items])
+    setNombreCanasta(entry.nombre)
+    setShowHistorial(false)
+  }
+
+  const handleSave = () => {
+    onSave(items, nombreCanasta.trim() || undefined)
   }
 
   if (loading || !items) {
@@ -71,8 +303,33 @@ export default function BasketScreen({ canasta, onBack, onSave, fetchDefaultCana
       <div className="basket-topbar">
         <button className="back-btn" onClick={onBack}>← Volver</button>
         <h2 className="basket-title">Mi Canasta</h2>
-        <button className="back-btn" onClick={resetDefault}>Restablecer</button>
+        <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+          <button className="back-btn" onClick={clearAll} title="Borrar todos los productos">🗑</button>
+          <button className="back-btn" onClick={resetDefault} title="Restablecer canasta default">↺</button>
+        </div>
       </div>
+
+      <CacheBanner estado={cacheStatus} />
+
+      {historial.length > 0 && (
+        <div className="basket-historial-bar">
+          <button className="btn-historial" onClick={() => setShowHistorial(v => !v)}>
+            📋 Canastas guardadas ({historial.length})
+          </button>
+          {showHistorial && (
+            <ul className="historial-list">
+              {historial.map(entry => (
+                <li key={entry.id} className="historial-item" onClick={() => cargarDesdeHistorial(entry)}>
+                  <span className="historial-nombre">{entry.nombre}</span>
+                  <span className="historial-meta">
+                    {entry.items.length} productos · {new Date(entry.fecha).toLocaleDateString('es-AR')}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div className="basket-summary">
         <span>{items.length} productos</span>
@@ -84,16 +341,67 @@ export default function BasketScreen({ canasta, onBack, onSave, fetchDefaultCana
             <div className="basket-cat-header">{cat}</div>
             {catItems.map(item => (
               <div key={item._idx} className="basket-item">
-                <div className="basket-item-info">
-                  <span className="basket-item-name">{item.nombre}</span>
-                  <span className="basket-item-unit">{item.unidad}</span>
-                </div>
-                <div className="basket-item-controls">
-                  <button className="qty-btn" onClick={() => updateQty(item._idx, -1)}>−</button>
-                  <span className="qty-value">{item.cantidad}</span>
-                  <button className="qty-btn" onClick={() => updateQty(item._idx, 1)}>+</button>
-                  <button className="remove-btn" onClick={() => removeItem(item._idx)}>✕</button>
-                </div>
+                {editingIdx === item._idx ? (
+                  <div className="basket-item-edit">
+                    <ProductoAutocompleteInput
+                      value={editItem.nombre}
+                      autoFocus
+                      onChange={nombre => setEditItem(p => ({ ...p, nombre }))}
+                      onSelectSuggestion={nombre => {
+                        const unidadDetectada = detectarUnidad(nombre)
+                        setEditItem(p => ({
+                          ...p,
+                          nombre,
+                          ...(unidadDetectada ? { unidad: unidadDetectada } : {}),
+                        }))
+                      }}
+                    />
+                    <div className="add-row">
+                      <input
+                        type="number"
+                        className="add-input add-input-sm"
+                        min={0.5}
+                        step={0.5}
+                        value={editItem.cantidad}
+                        onChange={e => setEditItem(p => ({ ...p, cantidad: +e.target.value }))}
+                      />
+                      <select
+                        className="add-input add-input-sm"
+                        value={editItem.unidad}
+                        onChange={e => setEditItem(p => ({ ...p, unidad: e.target.value }))}
+                      >
+                        {UNIDADES.map(u => <option key={u}>{u}</option>)}
+                      </select>
+                    </div>
+                    <MarcasInput
+                      value={editItem.marcas_aceptadas || []}
+                      onChange={val => setEditItem(p => ({ ...p, marcas_aceptadas: val }))}
+                    />
+                    <div className="add-actions">
+                      <button className="btn-primary" onClick={saveEdit}>Guardar</button>
+                      <button className="btn-secondary" onClick={cancelEdit}>Cancelar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="basket-item-info">
+                      <span className="basket-item-name">{item.nombre}</span>
+                      {item.marcas_aceptadas?.length > 0 && (
+                        <span className="basket-item-marcas">
+                          {item.marcas_aceptadas.join(' · ')}
+                        </span>
+                      )}
+                      <span className="basket-item-unit">{item.unidad}</span>
+                    </div>
+                    <div className="basket-item-controls">
+                      <button className="qty-btn" onClick={() => updateQty(item._idx, -1)}>−</button>
+                      <span className="qty-value">{item.cantidad}</span>
+                      <button className="qty-btn" onClick={() => updateQty(item._idx, 1)}>+</button>
+                      <button className="qty-btn" onClick={() => startEdit(item)} title="Editar producto">✎</button>
+                      <button className="remove-btn" onClick={() => removeItem(item._idx)}>✕</button>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>
@@ -102,12 +410,25 @@ export default function BasketScreen({ canasta, onBack, onSave, fetchDefaultCana
 
       {showAdd ? (
         <div className="add-item-form">
-          <input
-            className="add-input"
-            placeholder="Nombre del producto"
+          <ProductoAutocompleteInput
             value={newItem.nombre}
-            onChange={e => setNewItem(p => ({ ...p, nombre: e.target.value }))}
+            onChange={nombre => {
+              setNewItem(p => ({ ...p, nombre }))
+              setUnidadBloqueada(false)
+            }}
+            onSelectSuggestion={selectSuggestion}
           />
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label className="add-label">
+              Marcas <span className="hint">(opcional — dejá vacío para la más barata de cualquier marca)</span>
+            </label>
+            <MarcasInput
+              value={newItem.marcas_aceptadas}
+              onChange={(val) => setNewItem(p => ({ ...p, marcas_aceptadas: val }))}
+            />
+          </div>
+
           <div className="add-row">
             <input
               type="number"
@@ -118,23 +439,28 @@ export default function BasketScreen({ canasta, onBack, onSave, fetchDefaultCana
               value={newItem.cantidad}
               onChange={e => setNewItem(p => ({ ...p, cantidad: +e.target.value }))}
             />
-            <input
-              className="add-input add-input-sm"
-              placeholder="Unidad"
+            <select
+              className={`add-input add-input-sm${unidadBloqueada ? ' input-locked' : ''}`}
               value={newItem.unidad}
               onChange={e => setNewItem(p => ({ ...p, unidad: e.target.value }))}
-            />
-            <select
-              className="add-input"
-              value={newItem.categoria}
-              onChange={e => setNewItem(p => ({ ...p, categoria: e.target.value }))}
+              disabled={unidadBloqueada}
+              title={unidadBloqueada ? 'Unidad detectada automáticamente desde SEPA' : ''}
             >
-              {CATEGORIAS.map(c => <option key={c}>{c}</option>)}
+              {UNIDADES.map(u => <option key={u}>{u}</option>)}
             </select>
+            {unidadBloqueada && (
+              <button
+                className="btn-unlock"
+                type="button"
+                title="Editar unidad manualmente"
+                onClick={() => setUnidadBloqueada(false)}
+              >✎</button>
+            )}
           </div>
+
           <div className="add-actions">
             <button className="btn-primary" onClick={addItem}>Agregar</button>
-            <button className="btn-secondary" onClick={() => setShowAdd(false)}>Cancelar</button>
+            <button className="btn-secondary" onClick={() => { setShowAdd(false); setNewItem(ITEM_VACIO); setUnidadBloqueada(false) }}>Cancelar</button>
           </div>
         </div>
       ) : (
@@ -144,7 +470,13 @@ export default function BasketScreen({ canasta, onBack, onSave, fetchDefaultCana
       )}
 
       <div className="basket-footer">
-        <button className="btn-primary btn-save" onClick={() => onSave(items)}>
+        <input
+          className="add-input basket-nombre-input"
+          placeholder="Nombre para guardar (ej: Casa, Trabajo…)"
+          value={nombreCanasta}
+          onChange={e => setNombreCanasta(e.target.value)}
+        />
+        <button className="btn-primary btn-save" onClick={handleSave}>
           Guardar canasta
         </button>
       </div>

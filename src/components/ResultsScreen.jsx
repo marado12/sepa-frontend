@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { BannerDatosViejos } from './CacheBanner'
 
 const CADENA_COLORS = {
   'Jumbo':      '#00843D',
@@ -95,7 +96,15 @@ export default function ResultsScreen({ results, location, radioKm, onBack, onEd
   const [tab, setTab] = useState('ranking') // ranking | optimo
   const [expanded, setExpanded] = useState(null)
 
-  const { ranking, optimo, elapsed_s, n_precios, fecha_datos } = results
+  const { ranking, optimo, elapsed_s, n_precios, fecha_datos,
+          datos_degradados, aviso_datos, origen_precios, fuente } = results
+
+  // De dónde salieron estos precios. El backend puede servir del SEPA o de las
+  // tiendas online, y el usuario tiene que poder distinguirlos: los online son
+  // de hoy pero por cadena, los del SEPA son por sucursal pero pueden ser viejos.
+  const online = origen_precios === 'online'
+  const cadenasCaidas = Object.keys(fuente?.cadenas_fallidas || {})
+  const sinMatch = fuente?.productos_sin_match || []
 
 
   const best = ranking[0]
@@ -136,6 +145,31 @@ export default function ResultsScreen({ results, location, radioKm, onBack, onEd
           <button className="back-btn" onClick={onRecompare}>↺</button>
         </div>
       </div>
+
+      {/* El aviso de precios viejos va acá arriba, pegado a los precios. Abajo
+          del todo ya existe la fecha en letra chica, pero cuando los datos son
+          viejos el usuario tiene que enterarse ANTES de decidir dónde comprar. */}
+      {(datos_degradados || aviso_datos) && (
+        <BannerDatosViejos aviso={aviso_datos} fecha={fecha_datos} />
+      )}
+
+      {/* Con precios online no hay comparación entre sucursales de una misma
+          cadena: es un precio por cadena. Decirlo evita que el usuario crea que
+          el resultado es más preciso de lo que es. */}
+      {online && (
+        <div className="origen-precios">
+          <span className="origen-precios-icono">🛒</span>
+          <span className="origen-precios-texto">
+            Precios de las tiendas online, actualizados hoy.
+            {cadenasCaidas.length > 0
+              ? ` No respondieron: ${cadenasCaidas.join(', ')}.`
+              : ''}
+            {sinMatch.length > 0
+              ? ` Sin precio para: ${sinMatch.slice(0, 3).join(', ')}${sinMatch.length > 3 ? '…' : ''}.`
+              : ''}
+          </span>
+        </div>
+      )}
 
       {savings > 0 && (
         <div className="savings-banner">
@@ -241,13 +275,20 @@ export default function ResultsScreen({ results, location, radioKm, onBack, onEd
         <p className="results-meta">
           {n_precios?.toLocaleString('es-AR')} precios procesados en {elapsed_s}s
         </p>
-        {fecha_datos && (
+        {online ? (
+          <p className="results-staleness">
+            🛒 Precios de tiendas online · {fuente?.cadenas_consultadas?.length || 0} cadenas consultadas
+            {fuente?.cobertura_cadenas_pct != null && fuente.cobertura_cadenas_pct < 100
+              ? ` (${fuente.cobertura_cadenas_pct}% respondió)`
+              : ''}
+          </p>
+        ) : fecha_datos ? (
           <p className="results-staleness">
             📅 Datos SEPA del {new Date(fecha_datos + 'T12:00:00').toLocaleDateString('es-AR', {
               weekday: 'long', day: 'numeric', month: 'long'
             })}
           </p>
-        )}
+        ) : null}
       </div>
     </div>
   )

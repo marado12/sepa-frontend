@@ -4,6 +4,7 @@ import HomeScreen from './components/HomeScreen'
 import ResultsScreen from './components/ResultsScreen'
 import BasketScreen from './components/BasketScreen'
 import BancosScreen from './components/BancosScreen'
+import { useCacheStatus } from './useCacheStatus'
 import './index.css'
 
 posthog.init('phc_uEmS3FzSdncCKRCNPu82HChfR9mF77TKtPTThVVEuWt7', { api_host: 'https://eu.posthog.com' })
@@ -77,6 +78,10 @@ export default function App() {
   const [pendingCompareData, setPendingCompareData] = useState(null)
 
   const API = import.meta.env.VITE_API_URL || 'https://sepa-backend-bk88.onrender.com'
+
+  // Estado del caché SEPA. Vive acá y baja por props para que haya un solo
+  // poller contra /api/status, sin importar en qué pantalla esté el usuario.
+  const cacheStatus = useCacheStatus()
 
   // ── Leer canasta compartida desde hash al montar ──────────────────────────
   useEffect(() => {
@@ -236,6 +241,7 @@ export default function App() {
   if (screen === 'basket') {
     return (
       <BasketScreen
+        cacheStatus={cacheStatus}
         canasta={canasta}
         historial={leerHistorial()}
         onBack={() => setScreen('home')}
@@ -285,6 +291,7 @@ export default function App() {
 
   return (
     <HomeScreen
+      cacheStatus={cacheStatus}
       radioKm={radioKm}
       onRadioChange={setRadioKm}
       onCompare={handleCompare}

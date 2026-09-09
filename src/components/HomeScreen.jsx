@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import CacheBanner from './CacheBanner'
+import { API, fechaCorta } from '../useCacheStatus'
 
 const PROVINCIAS = [
   'Buenos Aires','CABA','Córdoba','Santa Fe','Mendoza','Tucumán',
@@ -7,8 +9,6 @@ const PROVINCIAS = [
   'Formosa','Chubut','San Luis','Catamarca','La Rioja',
   'La Pampa','Santa Cruz','Tierra del Fuego',
 ]
-
-const API = import.meta.env.VITE_API_URL || 'https://sepa-backend-bk88.onrender.com'
 
 function _diasFallback() {
   const NOMBRES = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
@@ -36,7 +36,22 @@ function useDias() {
   return dias
 }
 
-export default function HomeScreen({ radioKm, onRadioChange, onCompare, onEditBasket, error, diaSeleccionado, onDiaChange }) {
+/**
+ * Antes el footer decía "Precios actualizados al día de hoy", hardcodeado —
+ * falso cada vez que la descarga del SEPA fallaba. Ahora refleja el estado real.
+ */
+function leyendaDatos(estado) {
+  if (!estado || !estado.recibido) return 'Cargando estado de los precios…'
+  if (estado.datos_degradados) {
+    const f = fechaCorta(estado.fecha_datos)
+    return f ? `Precios del ${f} — el SEPA no respondió hoy` : 'Precios desactualizados'
+  }
+  if (estado.listo) return 'Precios actualizados al día de hoy'
+  if (estado.en_progreso) return 'Actualizando precios…'
+  return 'Precios sin cargar'
+}
+
+export default function HomeScreen({ cacheStatus, radioKm, onRadioChange, onCompare, onEditBasket, error, diaSeleccionado, onDiaChange }) {
   const [geoError, setGeoError] = useState(null)
   const [loadingGeo, setLoadingGeo] = useState(false)
   const [showManual, setShowManual] = useState(false)
@@ -83,6 +98,8 @@ export default function HomeScreen({ radioKm, onRadioChange, onCompare, onEditBa
         {(error || geoError) && (
           <div className="error-banner">{error || geoError}</div>
         )}
+
+        <CacheBanner estado={cacheStatus} />
 
         <button className="btn-primary btn-geo" onClick={handleGeo} disabled={loadingGeo}>
           {loadingGeo
@@ -151,7 +168,7 @@ export default function HomeScreen({ radioKm, onRadioChange, onCompare, onEditBa
 
       <footer className="home-footer">
         <p>Datos: <strong>Sistema SEPA</strong> · Ministerio de Economía Argentina</p>
-        <p>Precios actualizados al día de hoy</p>
+        <p>{leyendaDatos(cacheStatus)}</p>
       </footer>
     </div>
   )

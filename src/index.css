@@ -949,6 +949,54 @@ body {
   cursor: pointer;
   font-size: 12px;
 }
+.cache-banner-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.cache-banner-texto { flex: 1; min-width: 0; }
+.cache-banner-icono { flex-shrink: 0; font-size: 15px; }
+.cache-banner-cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Variantes del banner de caché (roadmap 0.2 / 0.3) ──────────────────────
+   --viejo : la app anda pero con datos de otro día (modo degradado).
+   --error : no hay datos y el backend sabe por qué.                          */
+.cache-banner--viejo {
+  background: #fff3e0;
+  border-color: #ffb74d;
+  color: #6d4c1b;
+}
+.cache-banner--error {
+  background: #fdecea;
+  border-color: #f5b5ae;
+  color: #7f2318;
+  align-items: flex-start;
+}
+.cache-banner--error .cache-banner-btn { background: #d84315; }
+.cache-banner--error .cache-spinner {
+  border-color: #f5b5ae;
+  border-top-color: #d84315;
+  margin-top: 2px;
+}
+
+/* El mensaje crudo del backend: útil para pegar en un reporte, pero no debe
+   dominar el banner ni romper el layout con una URL larga. */
+.cache-banner-detalle {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 0.85;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-height: 3.4em;
+  overflow: hidden;
+}
 
 /* ── Selector de día ── */
 .dia-selector {
@@ -1413,3 +1461,32 @@ body {
   margin-top: 0.25rem;
 }
 
+
+
+/* ── Origen de los precios (roadmap 4.2) ──────────────────────────────────────
+   Cuando el SEPA no está disponible, la app sirve precios de las tiendas
+   online. Son de hoy, pero por CADENA, no por sucursal: no distinguen entre
+   dos Carrefour distintos. Decirlo explícito evita que el usuario le atribuya
+   al resultado una precisión que no tiene.
+   Informativo, no una advertencia: usa el verde de la marca, no el ámbar. */
+.origen-precios {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--verde-light);
+  border: 1px solid rgba(26, 122, 74, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  margin: 8px 16px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--verde-dark);
+}
+.origen-precios-icono {
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.origen-precios-texto {
+  flex: 1;
+}
