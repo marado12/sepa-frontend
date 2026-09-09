@@ -10,47 +10,145 @@ const CADENA_COLORS = {
   'Chango Más': '#FF6B00',
 }
 
-const CADENA_EMOJI = {
-  'Jumbo': '🟢', 'Disco': '🔴', 'Vea': '🟡',
-  'Coto': '🔴', 'Día': '🔴', 'Carrefour': '🔵', 'Chango Más': '🟠',
-}
-
 function fmt(n) {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n)
 }
 
-function pct(a, b) {
-  if (!b || b === 0) return 0
-  return Math.round((a / b) * 100)
+// ── Share helpers ─────────────────────────────────────────────────────────────
+
+/**
+ * Copia `text` al portapapeles con fallback para http / móviles.
+ * Devuelve true si tuvo éxito.
+ */
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.cssText = 'position:fixed;opacity:0'
+      document.body.appendChild(ta)
+      ta.focus()
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      return true
+    } catch {
+      return false
+    }
+  }
 }
 
-export default function ResultsScreen({ results, location, radioKm, onBack, onEditBasket, onRecompare }) {
+/**
+ * Genera la URL de la página actual con los resultados de una cadena
+ * codificados en el hash, para poder compartir/recrear la vista.
+ * El receptor puede leer window.location.hash para restaurar el estado.
+ */
+function generarUrlResultados(cadena, detalle, total) {
+  const payload = { cadena, detalle, total }
+  const encoded = encodeURIComponent(btoa(JSON.stringify(payload)))
+  const base = window.location.origin + window.location.pathname
+  return `${base}#resultado=${encoded}`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Hook pequeño para manejar el estado de feedback del botón compartir.
+ * Devuelve [msg, triggerShare] donde msg es null | 'copiado' | 'error'.
+ */
+function useShareButton() {
+  const [msg, setMsg] = useState(null)
+
+  const triggerShare = async (url) => {
+    const ok = await copyToClipboard(url)
+    setMsg(ok ? 'copiado' : 'error')
+    setTimeout(() => setMsg(null), 2500)
+  }
+
+  return [msg, triggerShare]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Botón de compartir reutilizable con feedback visual inline */
+function ShareButton({ url, className = 'back-btn', title = 'Compartir resultados' }) {
+  const [shareMsg, triggerShare] = useShareButton()
+
+  return (
+    <button
+      className={className}
+      onClick={() => triggerShare(url)}
+      title={title}
+      style={{ position: 'relative' }}
+    >
+      {shareMsg === 'copiado' ? '✓' : shareMsg === 'error' ? '✗' : '🔗'}
+    </button>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+export default function ResultsScreen({ results, location, radioKm, onBack, onEditBasket, onRecompare, canasta }) {
   const [tab, setTab] = useState('ranking') // ranking | optimo
   const [expanded, setExpanded] = useState(null)
 
-  const { ranking, optimo, elapsed_s, n_precios } = results
+  const { ranking, optimo, elapsed_s, n_precios, fecha_datos } = results
+
 
   const best = ranking[0]
   const worst = ranking[ranking.length - 1]
-  const savings = worst && best ? worst.total_final - best.total_final : 0
+
+  // Ranking: "Ahorrás hasta" = super más caro (sin promo) vs mejor precio final (con promo)
+  const rankingPeorBase = worst ? (worst.total_sin_promo ?? worst.total_final) : 0
+  const rankingMejorFinal = best ? best.total_final : 0
+  const savingsRanking = rankingPeorBase - rankingMejorFinal
+
+  // Óptimo: "Ahorrás hasta" = super más caro (sin promo) vs total óptimo
+  // El óptimo no aplica promos bancarias (compra en varios supers), así que
+  // comparamos contra el peor super sin promo para ser justos.
+  const optimoTotal = optimo?.total_optimo ?? 0
+  const savingsOptimo = rankingPeorBase - optimoTotal
+
+  // Compatibilidad con el resto del código
+  const savings = tab === 'optimo' ? savingsOptimo : savingsRanking
 
   const loc = location?.provincia
     ? `${location.provincia}`
     : `${radioKm}km a la redonda`
+
+  // URL para compartir la vista completa de resultados (toda la página actual)
+  const urlResultadosCompletos = window.location.href
 
   return (
     <div className="results-screen">
       <div className="results-topbar">
         <button className="back-btn" onClick={onBack}>← Volver</button>
         <span className="results-loc">📍 {loc}</span>
-        <button className="back-btn" onClick={onRecompare}>↺</button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {/* Compartir resultados completos */}
+          <ShareButton
+            url={urlResultadosCompletos}
+            title="Compartir estos resultados"
+          />
+          <button className="back-btn" onClick={onRecompare}>↺</button>
+        </div>
       </div>
 
       {savings > 0 && (
         <div className="savings-banner">
           <span className="savings-text">Ahorrás hasta</span>
           <span className="savings-amount">{fmt(savings)}</span>
-          <span className="savings-text">eligiendo bien</span>
+          <span className="savings-text">
+            {tab === 'optimo' ? 'con canasta óptima' : 'eligiendo bien'}
+          </span>
+          {tab === 'ranking' && best?.reintegro > 0 && (
+            <span className="savings-subtext">
+              incluye reintegro {best.mejor_promo}
+            </span>
+          )}
         </div>
       )}
 
@@ -72,66 +170,13 @@ export default function ResultsScreen({ results, location, radioKm, onBack, onEd
       {tab === 'ranking' && (
         <div className="ranking-list">
           {ranking.map((item, i) => (
-            <div
+            <CadenaCard
               key={item.cadena}
-              className={`cadena-card ${i === 0 ? 'cadena-best' : ''}`}
-              onClick={() => setExpanded(expanded === item.cadena ? null : item.cadena)}
-            >
-              <div className="cadena-header">
-                <div className="cadena-left">
-                  {i === 0 && <div className="best-badge">Más barato</div>}
-                  <div className="cadena-name">
-                    <span
-                      className="cadena-dot"
-                      style={{ background: CADENA_COLORS[item.cadena] || '#888' }}
-                    />
-                    {item.cadena}
-                  </div>
-                  <div className="cadena-items">
-                    {item.n_encontrados}/{item.n_total} productos encontrados
-                  </div>
-                </div>
-                <div className="cadena-right">
-                  <div className="cadena-total">{fmt(item.total_final)}</div>
-                  {item.reintegro > 0 && (
-                    <div className="cadena-promo">
-                      -{fmt(item.reintegro)} con {item.mejor_promo}
-                    </div>
-                  )}
-                  <span className="expand-arrow">{expanded === item.cadena ? '▲' : '▼'}</span>
-                </div>
-              </div>
-
-              {expanded === item.cadena && (
-                <div className="cadena-detail">
-                  <div className="detail-row detail-header">
-                    <span>Producto</span>
-                    <span>Precio unit.</span>
-                    <span>Subtotal</span>
-                  </div>
-                  {item.detalle.map(d => (
-                    <div
-                      key={d.producto}
-                      className={`detail-row ${!d.ok ? 'detail-missing' : ''}`}
-                    >
-                      <span className="detail-prod">{d.producto}</span>
-                      <span>{d.ok ? fmt(d.precio_unit) : '—'}</span>
-                      <span>{d.ok ? fmt(d.subtotal) : '—'}</span>
-                    </div>
-                  ))}
-                  {item.reintegro > 0 && (
-                    <div className="detail-promo-row">
-                      <span>🏦 {item.mejor_promo}</span>
-                      <span>-{fmt(item.reintegro)}</span>
-                    </div>
-                  )}
-                  <div className="detail-total-row">
-                    <span>Total a pagar</span>
-                    <span>{fmt(item.total_final)}</span>
-                  </div>
-                </div>
-              )}
-            </div>
+              item={item}
+              rank={i}
+              expanded={expanded === item.cadena}
+              onToggle={() => setExpanded(expanded === item.cadena ? null : item.cadena)}
+            />
           ))}
         </div>
       )}
@@ -141,9 +186,14 @@ export default function ResultsScreen({ results, location, radioKm, onBack, onEd
           <div className="optimo-summary">
             <div className="optimo-total-label">Total canasta óptima</div>
             <div className="optimo-total-value">{fmt(optimo.total_optimo)}</div>
-            {savings > 0 && best && (
+            {best && (
               <div className="optimo-vs">
-                vs {fmt(best.total_final)} en {best.cadena} solo
+                vs {fmt(best.total_final)} en {best.cadena} (más barato en un solo super)
+              </div>
+            )}
+            {worst && savingsOptimo > 0 && (
+              <div className="optimo-vs optimo-vs-saving">
+                ahorrás {fmt(savingsOptimo)} vs {worst.cadena} ({fmt(rankingPeorBase)})
               </div>
             )}
           </div>
@@ -191,7 +241,120 @@ export default function ResultsScreen({ results, location, radioKm, onBack, onEd
         <p className="results-meta">
           {n_precios?.toLocaleString('es-AR')} precios procesados en {elapsed_s}s
         </p>
+        {fecha_datos && (
+          <p className="results-staleness">
+            📅 Datos SEPA del {new Date(fecha_datos + 'T12:00:00').toLocaleDateString('es-AR', {
+              weekday: 'long', day: 'numeric', month: 'long'
+            })}
+          </p>
+        )}
       </div>
+    </div>
+  )
+}
+
+// ── CadenaCard ────────────────────────────────────────────────────────────────
+
+function CadenaCard({ item, rank, expanded, onToggle }) {
+  const [shareMsg, triggerShare] = useShareButton()
+
+  const urlCadena = generarUrlResultados(item.cadena, item.detalle, item.total_final)
+
+  const handleShare = (e) => {
+    // Evitar que el click en el botón expanda/colapse la tarjeta
+    e.stopPropagation()
+    triggerShare(urlCadena)
+  }
+
+  return (
+    <div
+      className={`cadena-card ${rank === 0 ? 'cadena-best' : ''}`}
+      onClick={onToggle}
+    >
+      <div className="cadena-header">
+        <div className="cadena-left">
+          {rank === 0 && <div className="best-badge">Más barato</div>}
+          <div className="cadena-name">
+            <span
+              className="cadena-dot"
+              style={{ background: CADENA_COLORS[item.cadena] || '#888' }}
+            />
+            {item.cadena}
+          </div>
+          <div className="cadena-items">
+            {item.n_encontrados}/{item.n_total} productos encontrados
+            {item.cobertura_pct < 70 && (
+              <span className="cobertura-warning" title="Ranking puede estar distorsionado">
+                ⚠️ {item.cobertura_pct}% cobertura
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="cadena-right">
+          {item.reintegro > 0 ? (
+            <>
+              <div className="cadena-total-base">{fmt(item.total_base)}</div>
+              <div className="cadena-total cadena-total-final">{fmt(item.total_final)}</div>
+              <div className="cadena-promo">
+                -{fmt(item.reintegro)} · {item.mejor_promo}
+              </div>
+            </>
+          ) : (
+            <div className="cadena-total">{fmt(item.total_final)}</div>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            {/* Botón compartir esta cadena */}
+            <button
+              className="share-cadena-btn"
+              onClick={handleShare}
+              title={`Compartir precios de ${item.cadena}`}
+            >
+              {shareMsg === 'copiado' ? '✓' : shareMsg === 'error' ? '✗' : '🔗'}
+            </button>
+            <span className="expand-arrow">{expanded ? '▲' : '▼'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Toast de feedback inline bajo el header */}
+      {shareMsg && (
+        <div className={`share-toast ${shareMsg === 'copiado' ? 'share-toast-ok' : 'share-toast-err'}`}>
+          {shareMsg === 'copiado'
+            ? '✓ Link copiado al portapapeles'
+            : '✗ No se pudo copiar. Copiá la URL desde la barra del navegador.'}
+        </div>
+      )}
+
+      {expanded && (
+        <div className="cadena-detail">
+          <div className="detail-row detail-header">
+            <span>Producto</span>
+            <span>Precio unit.</span>
+            <span>Subtotal</span>
+          </div>
+          {item.detalle.map(d => (
+            <div
+              key={d.producto}
+              className={`detail-row ${!d.ok ? 'detail-missing' : ''}`}
+            >
+              <span className="detail-prod">{d.producto}</span>
+              <span>{d.ok ? fmt(d.precio_unit) : '—'}</span>
+              <span>{d.ok ? fmt(d.subtotal) : '—'}</span>
+            </div>
+          ))}
+          {item.reintegro > 0 && (
+            <div className="detail-promo-row">
+              <span>🏦 {item.mejor_promo}</span>
+              <span>-{fmt(item.reintegro)}</span>
+            </div>
+          )}
+          <div className="detail-total-row">
+            <span>Total a pagar</span>
+            <span>{fmt(item.total_final)}</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

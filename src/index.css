@@ -316,6 +316,11 @@ body {
 }
 
 .savings-text { font-size: 0.85rem; opacity: 0.9; }
+.savings-subtext {
+  font-size: 0.75rem;
+  opacity: 0.75;
+  margin-top: 0.1rem;
+}
 .savings-amount {
   font-family: 'DM Serif Display', serif;
   font-size: 2.25rem;
@@ -419,6 +424,18 @@ body {
   color: var(--text);
 }
 
+/* Precio tachado cuando hay reintegro */
+.cadena-total-base {
+  font-size: 0.85rem;
+  color: var(--text-3);
+  text-decoration: line-through;
+}
+
+/* Precio final con reintegro — destacado en verde */
+.cadena-total-final {
+  color: var(--verde);
+}
+
 .cadena-promo {
   font-size: 0.75rem;
   color: var(--verde);
@@ -428,6 +445,11 @@ body {
 }
 
 .expand-arrow { font-size: 0.65rem; color: var(--text-3); }
+
+.optimo-vs-saving {
+  color: var(--verde);
+  font-weight: 600;
+}
 
 .cadena-detail {
   border-top: 1px solid var(--border);
@@ -747,3 +769,647 @@ body {
 .btn-save {
   box-shadow: 0 4px 16px rgba(26,122,74,0.3);
 }
+
+/* Autocompletado */
+.autocomplete-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.autocomplete-searching {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.autocomplete-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #ddd);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 100;
+  max-height: 220px;
+  overflow-y: auto;
+  list-style: none;
+  padding: 4px 0;
+  margin: 0;
+}
+
+.autocomplete-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.autocomplete-item:hover {
+  background: var(--hover, #f5f5f5);
+}
+
+.autocomplete-nombre {
+  font-size: 14px;
+  color: var(--text-primary, #111);
+}
+
+.autocomplete-marca {
+  font-size: 12px;
+  color: var(--text-secondary, #777);
+}
+
+.autocomplete-variantes {
+  font-size: 11px;
+  color: var(--verde, #1a7a4a);
+  font-weight: 500;
+}
+
+/* Historial de canastas */
+.basket-historial-bar {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border, #eee);
+}
+
+.btn-historial {
+  background: none;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.historial-list {
+  list-style: none;
+  padding: 4px 0 0;
+  margin: 0;
+}
+
+.historial-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  gap: 8px;
+}
+
+.historial-item:hover {
+  background: var(--hover, #f5f5f5);
+}
+
+.historial-nombre {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.historial-meta {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  white-space: nowrap;
+}
+
+/* Campo nombre en el footer */
+.basket-nombre-input {
+  margin-bottom: 8px;
+}
+
+.chips-input {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  border: 1px solid #ccc; border-radius: 6px;
+  padding: 6px 8px; cursor: text;
+}
+.chips-input input { border: none; outline: none; flex: 1; min-width: 160px; font-size: 0.9rem; }
+.chip { display: inline-flex; align-items: center; gap: 4px; background: #e8f0fe; border-radius: 12px; padding: 2px 10px; font-size: 0.85rem; }
+.chip button { background: none; border: none; cursor: pointer; font-size: 1rem; color: #555; padding: 0; }
+.hint { color: #888; font-size: 0.8rem; }
+.hint-warning { color: #c47a00; font-size: 0.8rem; margin-top: 4px; }
+.basket-item-marcas { font-size: 0.75rem; color: #4a7cdc; font-style: italic; }
+
+/* Unidad auto-detectada desde SEPA */
+.input-locked {
+  background: var(--verde-light) !important;
+  border-color: var(--verde) !important;
+  color: var(--verde);
+  cursor: default;
+}
+
+.btn-unlock {
+  background: none;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0 0.5rem;
+  height: 38px;
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+.btn-unlock:hover { color: var(--verde); border-color: var(--verde); }
+
+/* ── Banner estado cache ── */
+.cache-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #5d4037;
+  margin: 8px 16px;
+}
+.cache-spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid #ffe082;
+  border-top-color: #f9a825;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+.cache-banner-btn {
+  background: #f9a825;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/* ── Selector de día ── */
+.dia-selector {
+  padding: 10px 16px 4px;
+}
+.dia-selector-label {
+  font-size: 12px;
+  color: #888;
+  display: block;
+  margin-bottom: 8px;
+}
+.dia-selector-options {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.dia-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 72px;
+  padding: 6px 10px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  font-size: 11px;
+  gap: 2px;
+  flex-shrink: 0;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.dia-btn-active {
+  border-color: var(--verde);
+  background: var(--verde-light);
+  color: var(--verde);
+}
+.dia-btn-label { font-weight: 600; font-size: 12px; }
+.dia-btn-fecha { color: #999; font-size: 10px; }
+.dia-btn-promo { font-size: 10px; color: #e65100; }
+
+.share-cadena-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 2px 4px;
+  border-radius: 4px;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.share-cadena-btn:hover { opacity: 1; }
+/* ─── BANCOS SCREEN ──────────────────────── */
+
+.bancos-screen {
+  min-height: 100vh;
+  max-width: 440px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 9rem; /* espacio para footer fijo */
+}
+
+.bancos-header {
+  padding: 1.75rem 1.25rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.bancos-header-top {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.bancos-icon-wrap {
+  font-size: 2rem;
+  width: 52px;
+  height: 52px;
+  background: var(--verde-light);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bancos-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.35rem;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--text);
+  margin-bottom: 0.2rem;
+}
+
+.bancos-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+
+.bancos-list {
+  padding: 1rem 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.bancos-loading,
+.bancos-empty {
+  text-align: center;
+  color: var(--text-3);
+  padding: 2rem 1rem;
+  font-size: 0.9rem;
+}
+
+/* ── Tarjeta de banco ── */
+
+.banco-card {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.banco-card-selected {
+  border-color: var(--verde);
+  box-shadow: 0 2px 12px rgba(26,122,74,0.12);
+}
+
+.banco-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+  cursor: pointer;
+  gap: 0.75rem;
+  user-select: none;
+}
+
+.banco-card-header:hover { background: var(--verde-light); }
+.banco-card-selected .banco-card-header { background: var(--verde-light); }
+
+.banco-card-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.banco-checkbox {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s, background 0.15s;
+  background: white;
+}
+
+.banco-checkbox.checked {
+  background: var(--verde);
+  border-color: var(--verde);
+}
+
+.banco-check-mark {
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.banco-icon { font-size: 1.25rem; flex-shrink: 0; }
+
+/* Nuevo: logo SVG de banco */
+.banco-logo-wrap {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.banco-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.banco-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.banco-hoy-badge {
+  display: inline-block;
+  background: #fff3cd;
+  color: #7d5a00;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.banco-expand-arrow {
+  font-size: 0.7rem;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+.banco-nota {
+  font-size: 0.78rem;
+  color: var(--text-2);
+  padding: 0 1rem 0.65rem;
+  line-height: 1.4;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Chips de medio de pago ── */
+
+.banco-medios {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  flex-wrap: wrap;
+}
+
+.medio-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.75rem;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.medio-chip:hover {
+  border-color: var(--verde);
+  color: var(--verde);
+}
+
+.medio-chip-active {
+  border-color: var(--verde);
+  background: var(--verde);
+  color: white;
+}
+
+.medio-chip-active:hover {
+  background: var(--verde-dark);
+  color: white;
+}
+
+/* ── Pills de promos ── */
+
+.banco-promos {
+  padding: 0 1rem 0.875rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border-top: 1px dashed var(--border);
+  margin-top: 0.1rem;
+  padding-top: 0.65rem;
+}
+
+.promo-pill {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.45rem 0.75rem;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  transition: background 0.1s;
+}
+
+.promo-pill-hoy {
+  background: var(--verde-light);
+  border-color: var(--verde);
+}
+
+.promo-pill-pct {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--verde);
+}
+
+.promo-pill-hoy .promo-pill-pct {
+  color: var(--verde-dark);
+}
+
+.promo-pill-cadenas {
+  font-size: 0.78rem;
+  color: var(--text);
+  flex: 1;
+}
+
+.promo-pill-dias {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-2);
+  background: white;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+.promo-pill-tope {
+  font-size: 0.7rem;
+  color: var(--text-3);
+}
+
+/* ── Footer fijo ── */
+
+.bancos-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 440px;
+  margin: 0 auto;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  padding: 0.875rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.bancos-footer-hint {
+  font-size: 0.78rem;
+  color: var(--verde);
+  text-align: center;
+  font-weight: 500;
+}
+
+.btn-aplicar {
+  box-shadow: 0 4px 16px rgba(26,122,74,0.25);
+}
+
+.btn-aplicar:disabled {
+  background: var(--text-3);
+  box-shadow: none;
+}
+
+.btn-omitir {
+  font-size: 0.85rem;
+  padding: 0.6rem;
+  color: var(--text-3);
+  border-style: dashed;
+}
+
+/* ── Nuevos estilos bancos ── */
+
+/* Badge con % de descuento destacado */
+.banco-hoy-badge {
+  display: inline-block;
+  background: #fff3cd;
+  color: #7d5a00;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+}
+
+.banco-badges-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+/* Aclaración "no se acumulan" */
+.bancos-aclaracion {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.75rem 1rem 0;
+  padding: 0.65rem 0.875rem;
+  background: #fffbea;
+  border: 1px solid #ffe59e;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  color: #7a5900;
+  line-height: 1.45;
+}
+
+.bancos-aclaracion-icon { font-size: 0.9rem; flex-shrink: 0; margin-top: 1px; }
+
+/* Label de sección (Bancos / Billeteras) */
+.bancos-section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  padding: 0 0.25rem;
+  margin-top: 0.5rem;
+}
+
+/* Título interno de promos */
+.banco-promos-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 0.2rem;
+}
+
+.banco-promos-hint {
+  font-weight: 400;
+  color: var(--text-3);
+}
+
+/* Pill "no aplica hoy" */
+.promo-pill-nodia {
+  font-size: 0.68rem;
+  color: var(--text-3);
+  background: #f5f5f5;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+/* ── Cobertura baja en cadena card ── */
+.cobertura-warning {
+  margin-left: 0.4rem;
+  font-size: 0.75rem;
+  color: #92400e;          /* ámbar oscuro, consistente con .bancos-aclaracion */
+  font-weight: 500;
+}
+
+/* ── Staleness indicator en results footer ── */
+.results-staleness {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  margin-top: 0.25rem;
+}
+
