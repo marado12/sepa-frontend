@@ -33,10 +33,14 @@ export function BannerDatosViejos({ aviso, fecha }) {
  * en App.jsx. Así hay un único poller para toda la app en vez de uno por
  * pantalla, y el footer de HomeScreen puede leer la misma fecha que el banner.
  *
- * Cubre los cuatro estados que el backend distingue desde el roadmap 0.2/0.3.
+ * Cubre los estados que el backend distingue desde el roadmap 0.2/0.3.
  * El caso importante es `datos_degradados`: ahí `listo` es true, así que el
  * banner viejo — que solo se mostraba con `!listo` — desaparecía y el usuario
  * veía precios de hace días sin ningún aviso.
+ *
+ * `listo` es del SEPA, no de la app: desde que los precios salen de las webs de
+ * las cadenas, `listo: false` es el estado NORMAL y no significa que falte nada.
+ * Por eso el caso 4 mira `fuente_precios` antes de hablar de errores.
  */
 export default function CacheBanner({ estado }) {
   const s = estado
@@ -91,7 +95,28 @@ export default function CacheBanner({ estado }) {
     )
   }
 
-  // 4. Sin datos, con causa conocida. Antes acá decía solo "Datos no cargados".
+  // 4. El SEPA no está cargado, pero los precios salen de las webs de las
+  //    cadenas: la app funciona igual, y con datos más frescos. No es una falla
+  //    y no se presenta como tal. Antes acá salía "⚠ Datos no cargados" o "No se
+  //    pudieron cargar los precios" —las dos falsas— y el error crudo del
+  //    backend impreso en pantalla, con la URL del dataset del SEPA adentro.
+  //    El botón sigue estando: es la reactivación manual del SEPA.
+  if (s.fuente_precios && s.fuente_precios !== 'sepa') {
+    return (
+      <div className="cache-banner cache-banner--info">
+        <span className="cache-banner-icono">🛒</span>
+        <span className="cache-banner-texto">
+          Precios tomados de las webs de los supermercados.
+        </span>
+        <button className="cache-banner-btn cache-banner-btn--sutil"
+                onClick={s.refrescar} disabled={s.refrescando}>
+          {s.refrescando ? 'Cargando…' : 'Cargar datos del SEPA'}
+        </button>
+      </div>
+    )
+  }
+
+  // 5. Configurado para depender solo del SEPA y falló: acá sí no hay precios.
   if (s.ultimo_error) {
     const hora = horaCorta(s.ultimo_intento)
     return (
@@ -102,7 +127,6 @@ export default function CacheBanner({ estado }) {
             {s.intentos_fallidos > 0 && ` Falló ${s.intentos_fallidos} ${s.intentos_fallidos === 1 ? 'vez' : 'veces'}.`}
             {hora && ` Último intento ${hora}.`}
           </span>
-          <code className="cache-banner-detalle">{s.ultimo_error}</code>
         </div>
         <button className="cache-banner-btn" onClick={s.refrescar} disabled={s.refrescando}>
           {s.refrescando ? 'Reintentando…' : 'Reintentar'}
@@ -111,7 +135,7 @@ export default function CacheBanner({ estado }) {
     )
   }
 
-  // 5. Sin datos y sin ningún intento todavía.
+  // 6. Sin datos y sin ningún intento todavía.
   return (
     <div className="cache-banner">
       <span className="cache-banner-texto">⚠ Datos no cargados.</span>

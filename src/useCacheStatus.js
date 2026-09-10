@@ -14,6 +14,10 @@ const ESTADO_INICIAL = {
   intentos_fallidos: 0,
   max_reintentos: null,
   proximo_reintento: null,
+  // `sepa` | `online` | `auto`. Decide si que el SEPA no esté cargado es un
+  // problema real o un detalle: con `online`/`auto` la app funciona igual, con
+  // precios de las webs de las cadenas.
+  fuente_precios: null,
   // No viene del backend: marca que /api/status no contestó (Render dormido,
   // sin red, CORS). Antes esto se tragaba en silencio y era indistinguible
   // de "el caché no está listo".
@@ -52,6 +56,7 @@ export function useCacheStatus({ intervaloMs = 5000 } = {}) {
         intentos_fallidos: d.intentos_fallidos ?? 0,
         max_reintentos:    d.max_reintentos ?? null,
         proximo_reintento: d.proximo_reintento ?? null,
+        fuente_precios:    d.fuente_precios ?? null,
         sinRespuesta:      false,
         recibido:          true,
       })
@@ -78,7 +83,12 @@ export function useCacheStatus({ intervaloMs = 5000 } = {}) {
       // Antes frenaba con `listo` a secas. En modo degradado `listo` también es
       // true, así que hay que seguir mirando: es la única forma de que el banner
       // de "precios viejos" desaparezca solo cuando el SEPA vuelva.
-      if (d.listo && !d.datos_degradados) parar()
+      if (d.listo && !d.datos_degradados) return parar()
+      // Si los precios no salen del SEPA, esperar a que cargue no cambia nada de
+      // lo que ve el usuario. Sin esto, con el SEPA caído cada pestaña abierta
+      // pegaba a /api/status cada 5s para siempre. Mientras haya una descarga en
+      // curso sí se sigue: es la única forma de que el botón muestre el avance.
+      if (d.fuente_precios && d.fuente_precios !== 'sepa' && !d.en_progreso) parar()
     }
 
     // El interval se asigna ANTES del primer tick para que parar() tenga algo

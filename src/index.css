@@ -984,18 +984,28 @@ body {
   margin-top: 2px;
 }
 
-/* El mensaje crudo del backend: útil para pegar en un reporte, pero no debe
-   dominar el banner ni romper el layout con una URL larga. */
-.cache-banner-detalle {
-  display: block;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  line-height: 1.35;
-  opacity: 0.85;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-  max-height: 3.4em;
-  overflow: hidden;
+/* --info : el SEPA no está cargado, pero los precios salen de las webs de las
+   cadenas y la app funciona. No es una advertencia: es de dónde salen los
+   números. Por eso no usa el amarillo del banner base.
+   (Acá vivía .cache-banner-detalle, que imprimía el error crudo del backend
+   —URL del dataset del SEPA incluida— en pantalla. Se sacó del JSX: al usuario
+   no le decía nada. El detalle completo sigue yendo al log del backend.) */
+.cache-banner--info {
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--text-2);
+}
+
+/* El botón sigue disponible —es la reactivación manual del SEPA— pero sin peso
+   visual: no es algo que el usuario tenga que hacer para poder usar la app. */
+.cache-banner-btn--sutil {
+  background: transparent;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+.cache-banner-btn--sutil:hover:not(:disabled) {
+  background: var(--bg);
+  color: var(--text);
 }
 
 /* ── Selector de día ── */

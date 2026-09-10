@@ -48,6 +48,10 @@ function leyendaDatos(estado) {
   }
   if (estado.listo) return 'Precios actualizados al día de hoy'
   if (estado.en_progreso) return 'Actualizando precios…'
+  // `listo: false` es del SEPA, no de la app: con precios de las webs de las
+  // cadenas la app anda igual. Decir "Precios sin cargar" acá era falso.
+  if (estado.fuente_precios && estado.fuente_precios !== 'sepa')
+    return 'Precios de las webs de los supermercados'
   return 'Precios sin cargar'
 }
 
