@@ -305,28 +305,26 @@ body {
   color: var(--text-2);
 }
 
-.savings-banner {
-  background: linear-gradient(135deg, var(--verde) 0%, #0f9b55 100%);
-  color: white;
-  padding: 1.25rem 1.5rem;
+/* El banner "Ahorrás hasta" (.savings-*) se eliminó en el Bloque A paso 3: se
+   calculaba con ranking[0] y ranking[len-1], o sea la diferencia entre dos
+   canastas de cobertura distinta, y era la pieza que hacía leer la pantalla
+   como un podio. Lo reemplaza el % por ficha contra el promedio de mercado. */
+
+/* Lo que NINGUNA cadena tiene: sale del divisor de cobertura y va nombrado
+   arriba de todo, para que el "3 de 4" de las fichas no se lea como pérdida. */
+.fichas-aviso {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 1rem 1rem 0;
+  padding: 0.75rem 0.875rem;
+  background: var(--naranja-light);
+  border: 1px solid rgba(232, 93, 26, 0.25);
+  border-radius: var(--radius-sm);
 }
 
-.savings-text { font-size: 0.85rem; opacity: 0.9; }
-.savings-subtext {
-  font-size: 0.75rem;
-  opacity: 0.75;
-  margin-top: 0.1rem;
-}
-.savings-amount {
-  font-family: 'DM Serif Display', serif;
-  font-size: 2.25rem;
-  font-weight: 400;
-  letter-spacing: -0.5px;
-}
+.fichas-aviso-icono { font-size: 0.9rem; color: var(--naranja); line-height: 1.35; }
+.fichas-aviso-texto { font-size: 0.8rem; color: var(--text-2); line-height: 1.35; }
 
 .tab-bar {
   display: flex;
@@ -356,13 +354,22 @@ body {
   border-bottom-color: var(--verde);
 }
 
-/* Ranking */
+/* Fichas por supermercado (Bloque A paso 3).
+   No hay podio: se fueron .cadena-best (borde verde de ganador) y .best-badge
+   ("Más barato"). El orden del array viene por cobertura y no afirma nada. */
 
-.ranking-list {
+.fichas-list {
   padding: 1rem 1rem 0;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.fichas-vacio {
+  font-size: 0.85rem;
+  color: var(--text-3);
+  text-align: center;
+  padding: 1.5rem 0;
 }
 
 .cadena-card {
@@ -375,7 +382,6 @@ body {
 }
 
 .cadena-card:hover { border-color: var(--verde); }
-.cadena-best { border-color: var(--verde) !important; }
 
 .cadena-header {
   display: flex;
@@ -385,20 +391,17 @@ body {
   gap: 0.75rem;
 }
 
-.cadena-left { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; }
-.cadena-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; }
-
-.best-badge {
-  display: inline-block;
-  background: var(--verde-light);
-  color: var(--verde);
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  width: fit-content;
+.cadena-left { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 0; }
+/* max-width: el nombre de la promo puede ser largo ("Tarjeta Carrefour 15%") y
+   sin tope empuja la columna izquierda hasta partirle el rótulo en dos líneas. */
+.cadena-right {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  max-width: 55%;
+  flex-shrink: 0;
 }
 
 .cadena-name {
@@ -442,13 +445,57 @@ body {
   background: var(--verde-light);
   padding: 0.2rem 0.5rem;
   border-radius: 6px;
+  text-align: right;
+  line-height: 1.4;
 }
 
 .expand-arrow { font-size: 0.65rem; color: var(--text-3); }
 
-.optimo-vs-saving {
-  color: var(--verde);
-  font-weight: 600;
+/* ── Ficha: el rótulo y el % contra el promedio de mercado ─────────────────── */
+
+/* "Comprando estos 3 acá". Cierra el hallazgo 2 de la auditoría: el total de una
+   ficha nunca se rotula "tu canasta" — son canastas de cobertura distinta. */
+.ficha-rotulo { font-size: 0.8rem; color: var(--text-2); }
+
+.ficha-delta-bloque {
+  padding: 0 1.125rem 0.875rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.ficha-delta { font-size: 0.95rem; font-weight: 600; }
+.ficha-delta--bajo   { color: var(--verde); }
+/* Por encima del promedio NO se recorta a cero: es la información útil. */
+.ficha-delta--sobre  { color: var(--naranja); }
+.ficha-delta--neutro { color: var(--text-2); }
+.ficha-delta--nulo   { color: var(--text-3); font-weight: 500; }
+
+/* El denominador del % va explícito: n_con_promedio no es n_comparables. */
+.ficha-delta-n { font-size: 0.72rem; color: var(--text-3); }
+
+/* La promo va como segundo movimiento, nunca como el número principal: el
+   promedio es de góndola y el delta final le resta el reintegro, así que toda
+   cadena con promo leería "debajo del mercado". */
+.ficha-delta-promo { font-size: 0.75rem; color: var(--text-2); margin-top: 0.15rem; }
+
+/* El faltante va en la tarjeta colapsada: el usuario compara sin expandir. */
+.ficha-faltantes {
+  border-top: 1px solid var(--border);
+  padding: 0.6rem 1.125rem;
+  font-size: 0.78rem;
+  color: var(--text-2);
+  background: var(--bg);
+}
+
+/* Una cadena en el radio sin NINGÚN producto de la canasta lleva ficha igual,
+   pero sin total: fmt(0) imprime "$0" y se lee como "gratis". */
+.ficha-vacia { cursor: default; opacity: 0.85; }
+.ficha-vacia:hover { border-color: var(--border); }
+.ficha-vacia-texto {
+  padding: 0 1.125rem 1rem;
+  font-size: 0.8rem;
+  color: var(--text-3);
 }
 
 .cadena-detail {
@@ -457,18 +504,82 @@ body {
 }
 
 .detail-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 0.5rem;
-  padding: 0.35rem 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
   font-size: 0.83rem;
   border-bottom: 1px solid var(--border);
-  align-items: center;
 }
 
-.detail-header { font-size: 0.75rem; font-weight: 600; color: var(--text-3); }
-.detail-missing { opacity: 0.45; }
+/* Una fila faltante NO se atenúa con opacity: un renglón gris y mudo era
+   indistinguible de "precio manual" o "sin unidad" — ese era el bug. Lleva tag. */
+.fila-izq { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; flex: 1; }
 .detail-prod { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* El producto concreto que representa al ítem (precio_por_100u.desc_ganadora). */
+.fila-sub {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fila-metrica { display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem; }
+.fila-nota { font-size: 0.72rem; color: var(--text-3); line-height: 1.3; }
+.fila-cantidad { font-size: 0.72rem; color: var(--text-3); }
+.fila-tambien-en { font-size: 0.72rem; color: var(--text-2); }
+
+.fila-delta { font-size: 0.75rem; font-weight: 600; }
+.fila-delta--bajo   { color: var(--verde); }
+.fila-delta--sobre  { color: var(--naranja); }
+.fila-delta--neutro { color: var(--text-2); }
+
+.fila-tag {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.fila-tag--faltante {
+  background: var(--naranja-light);
+  color: var(--naranja);
+  border: 1px solid rgba(232, 93, 26, 0.3);
+}
+
+.fila-tag--info {
+  background: #f2f0ec;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+
+.fila-precio { font-size: 0.83rem; font-weight: 600; white-space: nowrap; }
+
+/* El toast del botón compartir. Las tres clases se usaban desde siempre en
+   ResultsScreen y NO existían en ningún CSS: el mensaje salía como texto pelado
+   empujando el layout de la tarjeta. */
+.share-toast {
+  margin: 0 1.125rem 0.75rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.share-toast-ok  { background: var(--verde-light); color: var(--verde-dark); }
+.share-toast-err { background: var(--naranja-light); color: var(--naranja); }
+
+/* El n de cada promedio, siempre visible: un promedio de dos no es "el mercado". */
+.detalle-pie {
+  margin-top: 0.75rem;
+  font-size: 0.7rem;
+  color: var(--text-3);
+  line-height: 1.4;
+}
 
 .detail-promo-row {
   display: flex;
@@ -1456,12 +1567,21 @@ body {
   border: 1px solid var(--border);
 }
 
-/* ── Cobertura baja en cadena card ── */
-.cobertura-warning {
-  margin-left: 0.4rem;
-  font-size: 0.75rem;
-  color: #92400e;          /* ámbar oscuro, consistente con .bancos-aclaracion */
-  font-weight: 500;
+/* .cobertura-warning se eliminó con el Bloque A paso 3: `cobertura_pct` no existe
+   en `fichas` y la cobertura ya va escrita en la ficha ("3 de 4 productos"), que
+   además nombra el faltante. Un porcentaje de cobertura no decía cuál falta. */
+
+/* El backend (Render) y el frontend (Vercel) despliegan por separado. Si llega
+   una respuesta sin `fichas`, se dice; no se degrada en silencio al podio viejo. */
+.backend-viejo {
+  margin: 1.5rem 1rem;
+  padding: 1rem 1.125rem;
+  background: var(--naranja-light);
+  border: 1px solid rgba(232, 93, 26, 0.3);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--text-2);
+  line-height: 1.45;
 }
 
 /* ── Staleness indicator en results footer ── */

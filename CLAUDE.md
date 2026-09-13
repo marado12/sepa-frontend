@@ -57,8 +57,20 @@ escrita a mano**, con descuentos, topes de reintegro y días de la semana. Es la
 ítem 4.1: si una promo vence, la app le dice al usuario que ahorre plata con un descuento
 que ya no existe. La solución es que el backend mande `promos_sitio` leídas de los Teasers y
 que esta tabla quede solo como fallback. El parseo de Teasers **ya está arreglado en el
-backend**, y `ResultsScreen.jsx` ya muestra el origen de cada promo — pero **todavía no se
-verificó end-to-end** que las promos reales lleguen a la pantalla. Ese es el paso que falta.
+backend**, y desde la Tarea 14 `ResultsScreen.jsx` **sí** muestra el origen de cada promo
+("del sitio" / "a mano") y las promos que no bajan el total (cuotas sin interés). Lo que falta
+es **verificarlo end-to-end** contra el backend real: que las promos leídas de los Teasers
+lleguen efectivamente a la pantalla.
+
+> ✏️ **Esta línea afirmaba desde el 09/09 que `ResultsScreen.jsx` ya mostraba el origen de
+> cada promo. Era falsa.** El commit que lo prometía (`b99818f`, *"mostrar origen de cada promo
+> (sitio vs manual) y promos que no bajan el total"*) tocó **un solo archivo, `index.css`, con
+> 50 líneas de alta y cero JSX** (`git show --stat b99818f`). Las cinco clases —`.promo-origen`,
+> `.promo-origen--sitio`, `.promo-origen--manual`, `.promo-sin-descuento`, `.promo-nota`—
+> existían sin que ningún componente las usara. La Tarea 14 las cableó: ahora la afirmación es
+> verdadera, pero se escribió como verdadera durante tres días sin serlo. Séptima referencia
+> fantasma del proyecto. **Un commit con mensaje de feature y diff de solo CSS es la firma de
+> este error**: antes de creerle a un mensaje de commit, mirá el `--stat`.
 
 **3. `origen_precios` y `aviso_datos` ya se muestran** en `ResultsScreen.jsx` (commits del
 09/09). Si leés en algún documento que "falta mostrarlos", ese documento quedó viejo.

@@ -63,6 +63,39 @@ function leerCanastaDesdHash() {
   }
 }
 
+// ── Métricas de PostHog ───────────────────────────────────────────────────────
+
+/**
+ * Lo que se manda en `comparacion_completada`, derivado de `fichas`.
+ *
+ * `ahorro_maximo` se eliminó: era `peor − mejor` del ranking, o sea la diferencia
+ * entre dos canastas de cobertura distinta — exactamente el número que el Bloque A
+ * paso 3 vino a matar.
+ *
+ * `n_cadenas` se renombró a `n_fichas` porque cambiaba de población sin cambiar de
+ * nombre: era `ranking.length` (cadenas CON precio) y pasaría a ser `fichas.length`
+ * (cadenas CONSULTADAS, vacías incluidas). Mismo evento y misma propiedad con dos
+ * definiciones distintas mezcladas en una sola serie. `contrato` permite cortarla.
+ */
+function metricasComparacion(data) {
+  const fichas = data?.fichas ?? []
+  const sinNinguna = data?.sin_ninguna_cadena ?? []
+  // `fichas` ya viene ordenado por cobertura desc: el primero es el de más cobertura.
+  const mejorCobertura = fichas[0]
+  return {
+    contrato: 'fichas_v1',
+    n_fichas: fichas.length,
+    n_cadenas_con_precio: fichas.filter(f => f.n_disponibles > 0).length,
+    cobertura_max: mejorCobertura?.n_disponibles ?? 0,
+    // n_comparables por construcción: la canasta pedida menos lo que no tiene nadie.
+    n_comparables: Math.max((data?.n_pedidos ?? 0) - sinNinguna.length, 0),
+    n_pedidos: data?.n_pedidos ?? 0,
+    n_sin_ninguna_cadena: sinNinguna.length,
+    delta_pct_mejor_cobertura: mejorCobertura?.delta_pct_sin_promo ?? null,
+    elapsed_s: data?.elapsed_s,
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -202,12 +235,8 @@ export default function App() {
 
       const data = await res.json()
       posthog.capture('comparacion_completada', {
-        n_cadenas: data.ranking.length,
+        ...metricasComparacion(data),
         con_bancos: bancosSeleccionados.length,
-        ahorro_maximo: data.ranking.length > 1
-          ? data.ranking[data.ranking.length - 1].total_final - data.ranking[0].total_final
-          : 0,
-        elapsed_s: data.elapsed_s,
       })
       setResults(data)
       setScreen('results')
@@ -222,10 +251,9 @@ export default function App() {
     if (!pendingCompareData) { setScreen('home'); return }
     const { data } = pendingCompareData
     posthog.capture('comparacion_completada', {
-      n_cadenas: data.ranking.length,
+      ...metricasComparacion(data),
       con_bancos: 0,
       sin_promos: true,
-      elapsed_s: data.elapsed_s,
     })
     setResults(data)
     setScreen('results')
@@ -252,8 +280,14 @@ export default function App() {
   }
 
   if (screen === 'bancos') {
-    // Extraer las cadenas encontradas para filtrar bancos relevantes
-    const cadenasEncontradas = pendingCompareData?.data?.ranking?.map(r => r.cadena) || []
+    // Extraer las cadenas encontradas para filtrar bancos relevantes.
+    // El filtro por n_disponibles > 0 NO es opcional: `fichas` trae todas las
+    // cadenas consultadas, incluidas las que no tienen ningún producto. Sin
+    // filtrar, BancosScreen recibe cadenas vacías y ensancha la lista de promos
+    // en silencio (las usa como query param en /api/promos).
+    const cadenasEncontradas = pendingCompareData?.data?.fichas
+      ?.filter(f => f.n_disponibles > 0)
+      .map(f => f.cadena) || []
     return (
       <BancosScreen
         cadenas={cadenasEncontradas}
