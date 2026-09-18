@@ -23,6 +23,13 @@ function fmtPct(n) {
   return Math.abs(n).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 }
 
+/** Cuántas veces se cobra el precio. No siempre es entero: 2 kg de un pesable que
+ *  cotiza el kilo son 2, pero 1,5 L pedidos contra el precio del litro son 1,5.
+ *  Se redondea a dos decimales para que no se filtre el ruido del float. */
+function fmtCant(n) {
+  return Number(n.toFixed(2)).toLocaleString('es-AR', { maximumFractionDigits: 2 })
+}
+
 /** "a", "a ni b", "a, b ni c" — para enumerar lo que nadie tiene. */
 function listaNi(xs) {
   if (xs.length <= 1) return xs[0] || ''
@@ -575,6 +582,7 @@ function FilaDetalle({ d }) {
   const info = descripcionEstado(d)
   const delta = textoDeltaFila(d.delta_pct)
   const esFaltante = d.estado === 'faltante'
+  const envases = d.envases ?? d.cantidad
 
   return (
     <div className={`detail-row ${esFaltante ? 'detail-row--faltante' : ''}`}>
@@ -604,8 +612,16 @@ function FilaDetalle({ d }) {
           <span className="fila-tambien-en">Sí lo {d.tambien_en.length === 1 ? 'tiene' : 'tienen'} {listaY(d.tambien_en)}</span>
         )}
 
-        {!esFaltante && d.cantidad > 1 && (
-          <span className="fila-cantidad">{d.cantidad} × {fmt(d.precio_unit)}</span>
+        {/* Lo que se cobra son los ENVASES que cubren lo pedido, no la cantidad
+            pedida (Tarea 26): "Fideos, 2 kg" con paquetes de 500 g son 4 × el
+            precio del paquete, y "Gaseosa, 3 litro" con una botella de 3 L es 1.
+            Con `d.cantidad` acá la línea se contradecía con el subtotal de al lado.
+            `envases` lo trae la ruta online; la ruta SEPA y los precios manuales no
+            lo mandan y el backend los cobra `cantidad` veces (main.py:_envases), así
+            que el `??` deja esas filas —y cualquier respuesta de un backend anterior,
+            incluida una cacheada— exactamente como estaban. */}
+        {!esFaltante && envases > 1 && (
+          <span className="fila-cantidad">{fmtCant(envases)} × {fmt(d.precio_unit)}</span>
         )}
       </div>
 
