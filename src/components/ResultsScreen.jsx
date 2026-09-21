@@ -44,7 +44,7 @@ function listaY(xs) {
 
 // ── Textos del paso 3 ─────────────────────────────────────────────────────────
 //
-// Los seis estados de una fila y el delta contra el promedio de mercado. Nada de
+// Los estados de una fila y el delta contra el promedio de mercado. Nada de
 // esto se calcula acá: el backend manda `estado`, `delta_pct` y `promedio` ya
 // resueltos (main.py:_estado_fila / _fichas). Este archivo solo los pone en
 // palabras. El nombre de las unidades sale de `unidad_base`, que solo vale
@@ -75,11 +75,23 @@ function textoDeltaFila(pct) {
   return { texto: `${pct < 0 ? '−' : '+'}${fmtPct(pct)}%`, mod: pct < 0 ? 'bajo' : 'sobre' }
 }
 
+/** La fila del estado propio de la Tarea 26 (d): hoy la marca; mañana, también el estado. */
+const noContesta = (d) => d.estado === 'sin_elegible' || d.sin_elegible === true
+
 /**
  * Por qué una fila no muestra porcentaje. Ninguno de los cinco casos puede
  * quedarse en un guion o un cero: eran indistinguibles entre sí y ese era el bug.
  */
 function descripcionEstado(d) {
+  // La cadena lo vende, pero ninguna de sus ofertas contesta lo pedido (Tarea 26, paso d):
+  // el tomate por kilo cuando se pidieron latas. No es "no lo tiene". El backend manda
+  // `estado: 'faltante'` con la marca `sin_elegible`; el estado sigue siendo `faltante` a
+  // propósito, porque un frontend anterior no conoce otro y pintaba "2 × $0 … $0". Cuando el
+  // backend lo pase a `sin_elegible` (limpieza post-Tarea 14), esto ya lo acepta.
+  if (noContesta(d)) {
+    return { tag: 'no sirve para lo pedido', mod: 'faltante',
+             nota: 'Lo vende, pero no en una forma que conteste lo que pediste. No entra al total ni al %.' }
+  }
   switch (d.estado) {
     case 'faltante':
       return { tag: 'no lo tiene', mod: 'faltante', nota: null }
@@ -187,7 +199,7 @@ export default function ResultsScreen({ results, location, radioKm, onBack, onEd
   const [tab, setTab] = useState('fichas') // fichas | optimo
   const [expanded, setExpanded] = useState(null)
 
-  const { fichas, sin_ninguna_cadena, n_pedidos, optimo, elapsed_s, n_precios,
+  const { fichas, sin_ninguna_cadena, sin_ninguna_motivo, n_pedidos, optimo, elapsed_s, n_precios,
           fecha_datos, datos_degradados, aviso_datos, origen_precios, fuente } = results
 
   // El backend de Render y el frontend de Vercel despliegan por separado. Si acá
@@ -208,6 +220,13 @@ export default function ResultsScreen({ results, location, radioKm, onBack, onEd
   }
 
   const sinNinguna = sin_ninguna_cadena || []
+  // Por qué no entra en ninguna ficha (Tarea 26 d). Sin el campo —un backend anterior— todo
+  // cae en "nadie lo tiene", que es lo que decía el aviso hasta ahora.
+  const motivos = sin_ninguna_motivo || {}
+  const conMotivo = (m) => sinNinguna.filter(p => (motivos[p]?.motivo || 'nadie_lo_tiene') === m)
+  const nadieLoTiene = conMotivo('nadie_lo_tiene')
+  const ningunaContesta = conMotivo('ninguna_contesta')
+  const pedidoIlegible = conMotivo('pedido_ilegible')
   // n_comparables por construcción: la canasta pedida menos lo que no tiene nadie.
   const nComparables = Math.max((n_pedidos || 0) - sinNinguna.length, 0)
 
@@ -275,8 +294,16 @@ export default function ResultsScreen({ results, location, radioKm, onBack, onEd
         <div className="fichas-aviso">
           <span className="fichas-aviso-icono">ⓘ</span>
           <span className="fichas-aviso-texto">
-            Ninguna cadena tiene {listaNi(sinNinguna)}. Quedan fuera de la comparación
-            en lugar de restarle a todas.{' '}
+            {nadieLoTiene.length > 0 && <>Ninguna cadena tiene {listaNi(nadieLoTiene)}. </>}
+            {ningunaContesta.length > 0 && (
+              <>Ninguna cadena tiene {listaNi(ningunaContesta)} en una forma que conteste lo que pediste. </>
+            )}
+            {pedidoIlegible.length > 0 && (
+              <>No pudimos leer la cantidad que pediste de {listaY(pedidoIlegible.map(p =>
+                `${p} (${motivos[p].cantidad != null ? fmtCant(motivos[p].cantidad) + ' ' : ''}${motivos[p].unidad || ''})`))}:
+              revisala en tu canasta. </>
+            )}
+            Quedan fuera de la comparación en lugar de restarle a todas.{' '}
             {nComparables > 0
               ? `Abajo se comparan los otros ${nComparables} productos de tu canasta.`
               : 'No queda ningún producto de tu canasta para comparar.'}
@@ -546,6 +573,13 @@ function FichaCadena({ ficha, expanded, onToggle }) {
           Le falta: {ficha.faltantes.join(', ')}
         </div>
       )}
+      {/* Lo que la cadena vende pero no contesta lo pedido no es un faltante (Tarea 26 d).
+          El backend lo separa desde (d); con uno anterior sigue dentro de `faltantes`. */}
+      {ficha.no_contestan?.length > 0 && (
+        <div className="ficha-faltantes">
+          No sirve para lo pedido: {ficha.no_contestan.join(', ')}
+        </div>
+      )}
 
       {/* Toast de feedback inline */}
       {shareMsg && (
@@ -581,8 +615,14 @@ function FichaCadena({ ficha, expanded, onToggle }) {
 function FilaDetalle({ d }) {
   const info = descripcionEstado(d)
   const delta = textoDeltaFila(d.delta_pct)
-  const esFaltante = d.estado === 'faltante'
+  // Fuera del total: la cadena no lo tiene, o lo tiene pero no contesta lo pedido (Tarea 26 d).
+  // Las dos van sin precio, sin $/unidad y con "Sí lo tienen…".
+  const esFaltante = d.estado === 'faltante' || noContesta(d)
   const envases = d.envases ?? d.cantidad
+  // Lo que la cadena sí vende, cuando no contesta lo pedido: el backend lo manda en
+  // `descartado` (el representante de siempre) y es lo que explica la fila.
+  const titulo = d.precio_por_100u?.desc_ganadora
+    ?? (noContesta(d) ? d.descartado?.precio_por_100u?.desc_ganadora : null)
 
   return (
     <div className={`detail-row ${esFaltante ? 'detail-row--faltante' : ''}`}>
@@ -592,8 +632,8 @@ function FilaDetalle({ d }) {
         {/* Qué producto concreto representa al ítem. Depende de que
             `desc_ganadora` viaje siempre (Tarea 21): hoy las filas manual y
             sin_metrica no lo tienen, y entonces la fila va sin subtítulo. */}
-        {d.precio_por_100u?.desc_ganadora && (
-          <span className="fila-sub">{d.precio_por_100u.desc_ganadora}</span>
+        {titulo && (
+          <span className="fila-sub">{titulo}</span>
         )}
 
         <span className="fila-metrica">
