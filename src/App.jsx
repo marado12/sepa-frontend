@@ -152,10 +152,10 @@ export default function App() {
     })
 
     const msgs = [
-      'Conectando con datos SEPA...',
-      'Descargando precios del gobierno (puede tomar 30s la primera vez)...',
-      'Procesando miles de productos...',
-      '¡Casi listo! Calculando la mejor opción para vos...',
+      'Consultando las webs de los supermercados...',
+      'Si hace un rato que nadie usa la app, puede tardar un minuto más en arrancar...',
+      'Buscando cada producto de tu canasta...',
+      'Calculando la mejor opción para vos...',
     ]
     let mi = 0
     setLoadingMsg(msgs[mi])
@@ -317,7 +317,7 @@ export default function App() {
         <div className="loading-content">
           <div className="loading-spinner" />
           <p className="loading-msg">{loadingMsg}</p>
-          <p className="loading-hint">Los datos son del Sistema de Precios y Disponibilidad (SEPA) del Ministerio de Economía</p>
+          <p className="loading-hint">Precios de las webs de cada supermercado, consultados ahora. En el local pueden variar.</p>
         </div>
       </div>
     )

@@ -101,7 +101,7 @@ function MarcasInput({ value, onChange }) {
       </div>
       {value.length > 0 && (
         <p className="hint-warning">
-          Se elegirá la más barata entre estas marcas. Si ninguna aparece en SEPA, el producto quedará sin precio.
+          Se priorizan estas marcas. Si un súper no tiene ninguna, puede mostrar otra.
         </p>
       )}
     </div>

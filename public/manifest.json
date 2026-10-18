@@ -1,7 +1,7 @@
 {
-  "name": "Comparador SEPA",
-  "short_name": "SEPA Precios",
-  "description": "Compará precios de supermercados con datos oficiales",
+  "name": "Comparador de Supermercados",
+  "short_name": "Comparador",
+  "description": "Compará precios de supermercados en Argentina y encontrá dónde conviene hacer tu compra.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f5f3ef",

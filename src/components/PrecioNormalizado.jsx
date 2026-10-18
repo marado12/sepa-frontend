@@ -14,7 +14,7 @@ export function PrecioNormalizado({ precioUnit, className = "" }) {
   return (
     <span
       className={`precio-normalizado ${className}`}
-      title={desc_ganadora ? `Producto SEPA: ${desc_ganadora}` : undefined}
+      title={desc_ganadora ? `Producto: ${desc_ganadora}` : undefined}
     >
       {label} ${valor.toLocaleString("es-AR", { maximumFractionDigits: 2 })}
     </span>

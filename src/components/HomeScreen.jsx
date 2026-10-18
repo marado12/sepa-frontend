@@ -171,7 +171,7 @@ export default function HomeScreen({ cacheStatus, radioKm, onRadioChange, onComp
       </main>
 
       <footer className="home-footer">
-        <p>Datos: <strong>Sistema SEPA</strong> · Ministerio de Economía Argentina</p>
+        <p>Datos: <strong>precios online</strong> · se consultan al comparar</p>
         <p>{leyendaDatos(cacheStatus)}</p>
       </footer>
     </div>
