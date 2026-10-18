@@ -1,22 +1,24 @@
 // PrecioNormalizado.jsx
-// Muestra el precio normalizado por unidad base con su label ($/100g, $/100ml, $/unidad)
-// y la descripción del producto ganador en el SEPA.
+// Muestra el precio por unidad de contenido ($/kg, $/L, $/m, $/unidad (pack xN))
+// y, en el title, la descripción del producto que representa al ítem en esa cadena.
 //
 // Props:
 //   precioUnit: dict que devuelve el backend en "precio_por_100u"
 //               { valor, tipo, label, desc_ganadora, cantidad_base } | null
 
+import { partesPrecioUnitario } from "../precioUnitario";
+
 export function PrecioNormalizado({ precioUnit, className = "" }) {
   if (!precioUnit || precioUnit.valor == null) return null;
 
-  const { valor, label, desc_ganadora } = precioUnit;
+  const { desc_ganadora } = precioUnit;
 
   return (
     <span
       className={`precio-normalizado ${className}`}
       title={desc_ganadora ? `Producto: ${desc_ganadora}` : undefined}
     >
-      {label} ${valor.toLocaleString("es-AR", { maximumFractionDigits: 2 })}
+      {partesPrecioUnitario(precioUnit)}
     </span>
   );
 }
