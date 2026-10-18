@@ -4,7 +4,12 @@
 //
 // Props:
 //   precioUnit: dict que devuelve el backend en "precio_por_100u"
-//               { valor, tipo, label, desc_ganadora, cantidad_base } | null
+//               { valor, tipo, label, desc_ganadora, cantidad_base, precio_base, unidad_base } | null
+//               valor: precio de 100 g / 100 ml (u otra unidad); si es null no se muestra nada.
+//               precio_base + unidad_base: precio de 1 g o 1 ml; con unidad_base "g" o "ml"
+//               se muestra en $/kg o $/L (precio_base × 1000; si precio_base es null, valor × 10).
+//               label: para el resto de las unidades se muestra "label $valor".
+//               desc_ganadora: va al title. tipo y cantidad_base no se usan acá.
 
 import { partesPrecioUnitario } from "../precioUnitario";
 

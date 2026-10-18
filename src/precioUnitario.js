@@ -14,7 +14,7 @@ export function partesPrecioUnitario(p) {
     const [factor, sufijo] = escala;
     // valor es el precio de 100 g o 100 ml: × 10 da el de 1 kg o 1 L.
     const v = p.precio_base != null ? p.precio_base * factor : p.valor * 10;
-    return "$" + Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(Math.round(v)) + sufijo;
+    return "$" + Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(v) + sufijo;
   }
   return `${p.label} $${p.valor.toLocaleString("es-AR", { maximumFractionDigits: 2 })}`;
 }
