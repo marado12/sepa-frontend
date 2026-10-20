@@ -42,7 +42,7 @@ src/
 **1. La URL del backend está repetida en tres archivos.**
 
 ```
-App.jsx:80              const API = import.meta.env.VITE_API_URL || 'https://sepa-backend-bk88.onrender.com'
+App.jsx:113             const API = import.meta.env.VITE_API_URL || 'https://sepa-backend-bk88.onrender.com'
 components/BancosScreen.jsx:3   (idéntica)
 useCacheStatus.js:3     export const API = ...   ← este ya la exporta
 ```
@@ -79,6 +79,16 @@ lleguen efectivamente a la pantalla.
 y las promos del sitio llegan **después**, con la respuesta. Los dos momentos no se pisan hoy,
 pero hay que repensar cuándo se le pregunta al usuario. Es una decisión de producto de Santiago,
 no la resuelvas por tu cuenta.
+
+## Precio por unidad: $/kg y $/L (Pedido 1, 18/10)
+
+`src/precioUnitario.js` (JS puro, sin JSX) arma el texto que muestra `PrecioNormalizado.jsx`: con
+`unidad_base` `g` o `ml` sale en **$/kg** o **$/L**, sin decimales, como `precio_base × 1000`; el resto
+(`$/m`, `$/unidad (pack xN)`) sigue como `label $valor`. Commits `0a0b4d9` y `c28744d`.
+
+⚠️ **Deuda de guards (según el brief del 20/10, sin verificar acá):** el fallback `valor × 10` (cuando
+`precio_base` es null) no tiene caso de verificación para `ml`; M1 y M2 se reconstruyeron por conteo; S1 está
+compartida entre MB2 y M1; C solo cae con M1.
 
 ## Cosas a no "arreglar"
 
